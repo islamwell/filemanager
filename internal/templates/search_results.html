@@ -1,0 +1,101 @@
+{{template "base" .}}
+
+{{define "content"}}
+<div style="max-width: 1000px; margin: 1rem auto;">
+  <div class="card-section">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.75rem;">
+      <div>
+        <h2 style="font-size: 1.35rem; font-weight: 700;">Search Results</h2>
+        <p style="font-size: 0.85rem; color: var(--text-muted);">
+          Found {{.Data.ResultCount}} match{{if ne .Data.ResultCount 1}}es{{end}} for 
+          {{if .Data.Query}}<strong>"{{.Data.Query}}"</strong>{{end}}
+          {{if .Data.TagFilter}} tag <strong>#{{.Data.TagFilter}}</strong>{{end}}
+        </p>
+      </div>
+      <a href="/" class="btn btn-secondary btn-sm">&larr; Back to Dashboard</a>
+    </div>
+
+    {{if .Data.Results}}
+    <table class="items-table">
+      <thead>
+        <tr>
+          <th>Item</th>
+          <th>Type</th>
+          <th>Folder / Details</th>
+          <th>Tags</th>
+          <th>Relevance</th>
+          <th style="text-align: right;">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Data.Results}}
+        <tr>
+          <td>
+            <div class="item-name-cell">
+              {{if .IsMP3}}
+              <button type="button" class="play-btn" onclick="playAudio('/files/{{.ID}}/audio', '{{.Title}}')" title="Play MP3">
+                ▶ Play
+              </button>
+              <svg class="item-icon mp3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"></path>
+              </svg>
+              {{else if eq .Type "file"}}
+              <svg class="item-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+              </svg>
+              {{else}}
+              <svg class="item-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+              </svg>
+              {{end}}
+
+              <div>
+                <div style="font-weight: 600;">{{.Title}}</div>
+                <div style="font-size: 0.775rem; color: var(--text-muted);">{{.Subtitle}}</div>
+              </div>
+            </div>
+          </td>
+          <td>
+            <span style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; color: {{if eq .Type "file"}}var(--primary){{else}}#059669{{end}};">
+              {{.Type}}
+            </span>
+          </td>
+          <td>
+            {{if .CategoryPath}}
+              <span style="font-size: 0.8rem; color: var(--text-sub);">📁 {{.CategoryPath}}</span>
+            {{else}}
+              <span style="color: var(--text-muted);">-</span>
+            {{end}}
+          </td>
+          <td>
+            {{range .Tags}}
+            <a href="/search?tag={{.}}" class="tag-pill">#{{.}}</a>
+            {{else}}
+            <span style="color: var(--text-muted);">-</span>
+            {{end}}
+          </td>
+          <td>
+            <span style="background: #eef2ff; color: var(--primary); font-size: 0.75rem; font-weight: 600; padding: 2px 6px; border-radius: 4px;">
+              Score: {{.Score}}
+            </span>
+          </td>
+          <td style="text-align: right;">
+            {{if eq .Type "file"}}
+            <a href="/files/{{.ID}}/download" class="btn btn-secondary btn-sm">⬇ Download</a>
+            {{else}}
+            <a href="/snippets/{{.ID}}" class="btn btn-secondary btn-sm">👁 View</a>
+            {{end}}
+          </td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+    {{else}}
+    <div style="text-align: center; padding: 3rem 0; color: var(--text-muted);">
+      <p style="font-size: 1.1rem; margin-bottom: 0.5rem;">No items matched your query.</p>
+      <p style="font-size: 0.85rem;">Try searching for a different keyword or checking your tags.</p>
+    </div>
+    {{end}}
+  </div>
+</div>
+{{end}}

@@ -1,0 +1,91 @@
+{{template "base" .}}
+
+{{define "content"}}
+<div style="max-width: 900px; margin: 1.5rem auto;">
+  <div class="card-section">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem;">
+      <div>
+        <h2 style="font-size: 1.35rem; font-weight: 700; margin-bottom: 0.35rem;">{{.Data.Title}}</h2>
+        <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; font-size: 0.825rem; color: var(--text-muted);">
+          <span>Language: <strong>{{.Data.Language}}</strong></span>
+          <span>&bull;</span>
+          <span>{{.Data.CharacterCount}} characters</span>
+          <span>&bull;</span>
+          <span>Created {{formatDate .Data.CreatedAt}}</span>
+          {{if .Data.CategoryPath}}
+          <span>&bull;</span>
+          <span>📁 {{.Data.CategoryPath}}</span>
+          {{end}}
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 0.5rem; align-items: center;">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="copyToClipboard(document.getElementById('snippetRawCode').textContent, this)">
+          📋 Copy Content
+        </button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="openShareModal('{{.Data.ID}}', 'snippet', '{{if .Data.ShareToken}}{{.Data.ShareToken}}{{end}}')">
+          🔗 Share
+        </button>
+        <form action="/snippets/{{.Data.ID}}/delete" method="POST" onsubmit="return confirm('Delete snippet {{.Data.Title}}?');" style="display:inline;">
+          <input type="hidden" name="_csrf" value="{{$.CSRFToken}}">
+          <button type="submit" class="btn btn-danger btn-sm">🗑 Delete</button>
+        </form>
+      </div>
+    </div>
+
+    {{if .Data.Tags}}
+    <div style="margin-bottom: 1rem; display: flex; gap: 0.4rem; flex-wrap: wrap;">
+      {{range .Data.Tags}}
+      <a href="/?tag={{.}}" class="tag-pill">#{{.}}</a>
+      {{end}}
+    </div>
+    {{end}}
+
+    <div style="position: relative; background: #0f172a; color: #f8fafc; border-radius: 8px; padding: 1.25rem; overflow-x: auto;">
+      <pre id="snippetRawCode" style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 0.9rem; line-height: 1.6; white-space: pre-wrap; word-break: break-word;">{{.Data.Content}}</pre>
+    </div>
+
+    <div style="margin-top: 1.5rem; display: flex; justify-content: space-between;">
+      <a href="/" class="btn btn-secondary">&larr; Back to Dashboard</a>
+    </div>
+  </div>
+</div>
+
+<!-- Share Modal Reusable Container -->
+<dialog id="shareModal">
+  <div class="dialog-header">
+    <h3 class="dialog-title">Generate Shareable Link</h3>
+    <button onclick="closeDialog('shareModal')" class="dialog-close">&times;</button>
+  </div>
+
+  <div id="existingShareSection" style="display: none; margin-bottom: 1.25rem; background: var(--primary-light); padding: 1rem; border-radius: 6px;">
+    <label class="form-label" style="color: var(--primary);">Active Share Link:</label>
+    <div style="display: flex; gap: 0.5rem;">
+      <input type="text" id="shareLinkInput" class="form-control" readonly style="background: #ffffff;">
+      <button type="button" class="btn btn-primary" onclick="copyToClipboard(document.getElementById('shareLinkInput').value, this)">Copy</button>
+    </div>
+  </div>
+
+  <form action="/items/share" method="POST">
+    <input type="hidden" name="_csrf" value="{{.CSRFToken}}">
+    <input type="hidden" id="shareItemId" name="item_id" value="{{.Data.ID}}">
+    <input type="hidden" id="shareItemType" name="item_type" value="snippet">
+
+    <div class="form-group">
+      <label class="form-label" for="shareExpiry">Link Expiration</label>
+      <select id="shareExpiry" name="expiry" class="form-control">
+        <option value="never">Never expires (Permanent)</option>
+        <option value="1h">1 Hour</option>
+        <option value="24h">24 Hours (1 Day)</option>
+        <option value="7d">7 Days</option>
+        <option value="30d">30 Days</option>
+      </select>
+    </div>
+
+    <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1.5rem;">
+      <button type="button" onclick="closeDialog('shareModal')" class="btn btn-secondary">Close</button>
+      <button type="submit" class="btn btn-primary">Create / Update Link</button>
+    </div>
+  </form>
+</dialog>
+{{end}}

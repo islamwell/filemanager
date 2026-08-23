@@ -1,0 +1,84 @@
+{{define "base"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{.Title}}</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <header class="navbar">
+    <a href="/" class="nav-brand">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
+      </svg>
+      <span>File Manager</span>
+    </a>
+
+    {{if .User}}
+    <div class="nav-search">
+      <form action="/search" method="GET" class="search-form">
+        <svg class="search-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+        </svg>
+        <input type="text" name="q" class="search-input" placeholder="Fuzzy search files, snippets, tags, folders..." value="{{.SearchQuery}}">
+      </form>
+    </div>
+
+    <div class="nav-actions">
+      <span class="user-badge">{{.User.Username}}</span>
+      <form action="/logout" method="POST" style="display:inline;">
+        <input type="hidden" name="_csrf" value="{{.CSRFToken}}">
+        <button type="submit" class="btn btn-secondary btn-sm">Sign Out</button>
+      </form>
+    </div>
+    {{else}}
+    <div class="nav-actions">
+      <a href="/login" class="btn btn-secondary btn-sm">Sign In</a>
+      <a href="/register" class="btn btn-primary btn-sm">Register</a>
+    </div>
+    {{end}}
+  </header>
+
+  <main class="container">
+    {{if .FlashError}}
+    <div class="banner banner-error">
+      <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
+      <span>{{.FlashError}}</span>
+    </div>
+    {{end}}
+
+    {{if .FlashSuccess}}
+    <div class="banner banner-success">
+      <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
+      <span>{{.FlashSuccess}}</span>
+    </div>
+    {{end}}
+
+    {{template "content" .}}
+  </main>
+
+  <!-- Sticky Global MP3 Player Bar -->
+  <div id="globalAudioBar" class="audio-player-bar">
+    <div class="audio-track-info">
+      <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"></path>
+      </svg>
+      <span id="audioTrackName" class="audio-track-name">Audio Track</span>
+    </div>
+    <audio id="globalAudioPlayer" class="audio-native-player" controls preload="auto"></audio>
+    <button onclick="closeAudioPlayer()" class="btn btn-secondary btn-sm" style="color:#ffffff; background:rgba(255,255,255,0.1); border:none;">✕</button>
+  </div>
+
+  <footer class="footer">
+    <div class="footer-content">
+      <span>File Manager Application &bull; Secure Storage &amp; Sharing</span>
+      <span class="footer-version">{{.FooterVersion}}</span>
+    </div>
+  </footer>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
+{{end}}

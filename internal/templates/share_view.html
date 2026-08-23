@@ -1,0 +1,94 @@
+{{template "base" .}}
+
+{{define "content"}}
+<div style="max-width: 800px; margin: 2rem auto;">
+  {{if .Data.Expired}}
+  <div class="card-section" style="text-align: center; padding: 3rem 1.5rem;">
+    <div style="font-size: 3rem; margin-bottom: 1rem;">⏳</div>
+    <h2 style="font-size: 1.5rem; margin-bottom: 0.5rem; color: var(--danger);">Share Link Expired</h2>
+    <p style="color: var(--text-muted); margin-bottom: 1.5rem;">This share link has reached its expiration time or has been revoked by the owner.</p>
+    <a href="/" class="btn btn-secondary">Go to Home</a>
+  </div>
+  {{else}}
+  <div class="card-section">
+    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 1rem; margin-bottom: 1.25rem;">
+      <div style="display: flex; align-items: center; gap: 0.5rem;">
+        <span style="font-size: 1.2rem;">🔗</span>
+        <span style="font-size: 0.85rem; font-weight: 600; text-transform: uppercase; color: var(--primary);">Public Shared Item</span>
+      </div>
+      <div style="font-size: 0.8rem; color: var(--text-muted);">
+        <span>Views: <strong>{{.Data.Share.ViewCount}}</strong></span>
+        {{if .Data.Share.ExpiresAt}}
+        <span>&bull; Expires {{formatDate .Data.Share.ExpiresAt}}</span>
+        {{else}}
+        <span>&bull; Never expires</span>
+        {{end}}
+      </div>
+    </div>
+
+    {{if eq .Data.Share.ItemType "file"}}
+      {{with .Data.Share.File}}
+      <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+        <div style="display: flex; align-items: center; gap: 1rem;">
+          {{if .IsMP3}}
+          <div style="background: #f5f3ff; color: #6d28d9; padding: 1rem; border-radius: 12px; font-size: 2rem;">🎵</div>
+          {{else}}
+          <div style="background: #f1f5f9; color: var(--text-sub); padding: 1rem; border-radius: 12px; font-size: 2rem;">📄</div>
+          {{end}}
+          <div>
+            <h2 style="font-size: 1.35rem; font-weight: 700; word-break: break-all;">{{.OriginalFilename}}</h2>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.2rem;">
+              {{.FormattedSize}} &bull; {{.MimeType}}
+            </p>
+          </div>
+        </div>
+
+        {{if .IsMP3}}
+        <!-- Single-Click Audio Streaming Player for MP3 -->
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1.25rem;">
+          <div style="font-weight: 600; font-size: 0.9rem; margin-bottom: 0.5rem; color: var(--text-main);">Audio Stream Preview</div>
+          <audio controls preload="auto" style="width: 100%; height: 42px;">
+            <source src="/share/{{$.Data.Share.Token}}/audio" type="audio/mpeg">
+            Your browser does not support HTML5 audio streaming.
+          </audio>
+        </div>
+        {{end}}
+
+        <div style="background: #f8fafc; border-radius: 6px; padding: 0.75rem 1rem; font-size: 0.8rem; color: var(--text-muted); font-family: ui-monospace, monospace; word-break: break-all;">
+          SHA-256: {{.Sha256Checksum}}
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 0.5rem;">
+          <a href="/share/{{$.Data.Share.Token}}/download" class="btn btn-primary" style="padding: 0.75rem 1.5rem; font-size: 0.95rem;">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+            Download File ({{.FormattedSize}})
+          </a>
+        </div>
+      </div>
+      {{end}}
+
+    {{else if eq .Data.Share.ItemType "snippet"}}
+      {{with .Data.Share.Snippet}}
+      <div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+          <div>
+            <h2 style="font-size: 1.35rem; font-weight: 700;">{{.Title}}</h2>
+            <p style="font-size: 0.825rem; color: var(--text-muted); margin-top: 0.2rem;">
+              Language: <strong>{{.Language}}</strong> &bull; {{.CharacterCount}} characters
+            </p>
+          </div>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="copyToClipboard(document.getElementById('sharedSnippetCode').textContent, this)">
+            📋 Copy Snippet
+          </button>
+        </div>
+
+        <div style="background: #0f172a; color: #f8fafc; border-radius: 8px; padding: 1.25rem; overflow-x: auto;">
+          <pre id="sharedSnippetCode" style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 0.9rem; line-height: 1.6; white-space: pre-wrap; word-break: break-word;">{{.Content}}</pre>
+        </div>
+      </div>
+      {{end}}
+    {{end}}
+  </div>
+  {{end}}
+</div>
+{{end}}

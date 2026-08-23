@@ -1,0 +1,352 @@
+{{template "base" .}}
+
+{{define "content"}}
+<div class="dashboard-grid">
+  <!-- Left Sidebar -->
+  <aside class="sidebar-panel">
+    <!-- Categories / Sub-collections Section (up to 4 levels) -->
+    <div class="sidebar-section">
+      <h3>
+        <span>Folders &amp; Collections</span>
+        <button onclick="openDialog('folderModal')" class="btn btn-secondary btn-sm" title="New Folder" style="padding: 0.15rem 0.4rem; font-size: 0.75rem;">+ New</button>
+      </h3>
+      <ul class="cat-list">
+        <li>
+          <a href="/" class="cat-item {{if not .Data.ActiveCatID}}active{{end}}">
+            <span>📁 All Items</span>
+          </a>
+        </li>
+        {{range .Data.Categories}}
+        <li>
+          <div style="display: flex; align-items: center; justify-content: space-between;">
+            <a href="/?category_id={{.ID}}" class="cat-item cat-depth-{{.Depth}} {{if eq $.Data.ActiveCatID .ID}}active{{end}}" style="flex:1;">
+              <span>{{if eq .Depth 1}}📂{{else if eq .Depth 2}}↳ 📁{{else if eq .Depth 3}}↳ ↳ 📁{{else}}↳ ↳ ↳ 📄{{end}} {{.Name}}</span>
+            </a>
+            <form action="/categories/{{.ID}}/delete" method="POST" onsubmit="return confirm('Delete folder {{.Name}}? (Items inside will be kept in root)');" style="display:inline;">
+              <input type="hidden" name="_csrf" value="{{$.CSRFToken}}">
+              <button type="submit" class="btn btn-sm" style="background:none; border:none; color:var(--text-muted); cursor:pointer; padding:0 4px;" title="Delete folder">✕</button>
+            </form>
+          </div>
+        </li>
+        {{end}}
+      </ul>
+    </div>
+
+    <!-- Tags Cloud Section -->
+    <div class="sidebar-section">
+      <h3><span>Tags</span></h3>
+      <div class="tag-cloud">
+        {{if .Data.Tags}}
+          {{range .Data.Tags}}
+          <a href="/?tag={{.Name}}{{if $.Data.ActiveCatID}}&category_id={{$.Data.ActiveCatID}}{{end}}" class="tag-pill {{if eq $.Data.ActiveTag .Name}}active{{end}}">
+            #{{.Name}} <span style="opacity: 0.7;">({{ .ItemCount }})</span>
+          </a>
+          {{end}}
+        {{else}}
+          <span style="font-size: 0.8rem; color: var(--text-muted);">No tags created yet.</span>
+        {{end}}
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main Content Area -->
+  <div class="main-content">
+    <!-- Action Bar -->
+    <div class="action-header">
+      <div>
+        <h2 style="font-size: 1.25rem; font-weight: 700;">
+          {{if .Data.ActiveCategory}}
+            📁 {{.Data.ActiveCategory.Path}}
+          {{else if .Data.ActiveTag}}
+            🏷️ Tag: #{{.Data.ActiveTag}}
+          {{else}}
+            All Files &amp; Snippets
+          {{end}}
+        </h2>
+        <p style="font-size: 0.825rem; color: var(--text-muted);">{{.Data.TotalFiles}} files, {{.Data.TotalSnippets}} text snippets</p>
+      </div>
+
+      <div class="action-buttons">
+        <button onclick="openDialog('uploadModal')" class="btn btn-primary">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+          Upload File
+        </button>
+        <a href="/snippets/new{{if .Data.ActiveCatID}}?category_id={{.Data.ActiveCatID}}{{end}}" class="btn btn-secondary">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+          New Snippet
+        </a>
+      </div>
+    </div>
+
+    <!-- Uploaded Files Section -->
+    <section class="card-section">
+      <div class="card-title">
+        <span>Files</span>
+        <span style="font-size: 0.8rem; font-weight: normal; color: var(--text-muted);">Max 100 MB</span>
+      </div>
+
+      {{if .Data.Files}}
+      <table class="items-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Size</th>
+            <th>Folder</th>
+            <th>Tags</th>
+            <th>Uploaded</th>
+            <th style="text-align: right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{range .Data.Files}}
+          <tr>
+            <td>
+              <div class="item-name-cell">
+                {{if .IsMP3}}
+                <button type="button" class="play-btn" onclick="playAudio('/files/{{.ID}}/audio', '{{.OriginalFilename}}')" title="Play MP3">
+                  ▶ Play
+                </button>
+                <svg class="item-icon mp3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"></path>
+                </svg>
+                {{else}}
+                <svg class="item-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                </svg>
+                {{end}}
+                <span>{{.OriginalFilename}}</span>
+              </div>
+            </td>
+            <td>{{.FormattedSize}}</td>
+            <td>
+              {{if .CategoryPath}}
+                <span style="font-size: 0.8rem; color: var(--text-muted);">{{.CategoryPath}}</span>
+              {{else}}
+                <span style="color: var(--text-muted);">-</span>
+              {{end}}
+            </td>
+            <td>
+              {{range .Tags}}
+              <a href="/?tag={{.}}" class="tag-pill">#{{.}}</a>
+              {{else}}
+              <span style="color: var(--text-muted);">-</span>
+              {{end}}
+            </td>
+            <td style="font-size: 0.8rem; color: var(--text-muted);">{{formatDate .CreatedAt}}</td>
+            <td>
+              <div class="actions-cell">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="openShareModal('{{.ID}}', 'file', '{{if .ShareToken}}{{.ShareToken}}{{end}}')" title="Share">
+                  🔗 Share
+                </button>
+                <a href="/files/{{.ID}}/download" class="btn btn-secondary btn-sm" title="Download">
+                  ⬇ Download
+                </a>
+                <form action="/files/{{.ID}}/delete" method="POST" onsubmit="return confirm('Delete file {{.OriginalFilename}}?');" style="display:inline;">
+                  <input type="hidden" name="_csrf" value="{{$.CSRFToken}}">
+                  <button type="submit" class="btn btn-danger btn-sm" title="Delete">🗑</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {{end}}
+        </tbody>
+      </table>
+      {{else}}
+      <p style="text-align: center; color: var(--text-muted); padding: 2rem 0; font-size: 0.9rem;">
+        No files uploaded yet. Click <strong>Upload File</strong> to add your first file.
+      </p>
+      {{end}}
+    </section>
+
+    <!-- Text Snippets Section -->
+    <section class="card-section">
+      <div class="card-title">
+        <span>Text Snippets</span>
+        <span style="font-size: 0.8rem; font-weight: normal; color: var(--text-muted);">Max 10,000 chars</span>
+      </div>
+
+      {{if .Data.Snippets}}
+      <table class="items-table">
+        <thead>
+          <tr>
+            <th>Title</th>
+            <th>Preview</th>
+            <th>Folder</th>
+            <th>Tags</th>
+            <th>Created</th>
+            <th style="text-align: right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{range .Data.Snippets}}
+          <tr>
+            <td>
+              <div class="item-name-cell">
+                <svg class="item-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>
+                <a href="/snippets/{{.ID}}" style="color: var(--text-main); text-decoration: none; font-weight: 600;">{{.Title}}</a>
+              </div>
+            </td>
+            <td>
+              <code style="font-size: 0.8rem; background:#f1f5f9; padding: 2px 6px; border-radius: 4px; color: var(--text-sub);">
+                {{.SnippetPreview 40}}
+              </code>
+            </td>
+            <td>
+              {{if .CategoryPath}}
+                <span style="font-size: 0.8rem; color: var(--text-muted);">{{.CategoryPath}}</span>
+              {{else}}
+                <span style="color: var(--text-muted);">-</span>
+              {{end}}
+            </td>
+            <td>
+              {{range .Tags}}
+              <a href="/?tag={{.}}" class="tag-pill">#{{.}}</a>
+              {{else}}
+              <span style="color: var(--text-muted);">-</span>
+              {{end}}
+            </td>
+            <td style="font-size: 0.8rem; color: var(--text-muted);">{{formatDate .CreatedAt}}</td>
+            <td>
+              <div class="actions-cell">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="openShareModal('{{.ID}}', 'snippet', '{{if .ShareToken}}{{.ShareToken}}{{end}}')" title="Share">
+                  🔗 Share
+                </button>
+                <a href="/snippets/{{.ID}}" class="btn btn-secondary btn-sm" title="View">
+                  👁 View
+                </a>
+                <form action="/snippets/{{.ID}}/delete" method="POST" onsubmit="return confirm('Delete snippet {{.Title}}?');" style="display:inline;">
+                  <input type="hidden" name="_csrf" value="{{$.CSRFToken}}">
+                  <button type="submit" class="btn btn-danger btn-sm" title="Delete">🗑</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {{end}}
+        </tbody>
+      </table>
+      {{else}}
+      <p style="text-align: center; color: var(--text-muted); padding: 2rem 0; font-size: 0.9rem;">
+        No snippets created yet. Click <strong>New Snippet</strong> to paste plain text or code.
+      </p>
+      {{end}}
+    </section>
+  </div>
+</div>
+
+<!-- Upload Modal -->
+<dialog id="uploadModal">
+  <div class="dialog-header">
+    <h3 class="dialog-title">Upload File</h3>
+    <button onclick="closeDialog('uploadModal')" class="dialog-close">&times;</button>
+  </div>
+  <form action="/files/upload" method="POST" enctype="multipart/form-data">
+    <input type="hidden" name="_csrf" value="{{.CSRFToken}}">
+
+    <div class="form-group">
+      <label class="form-label" for="uploadFile">Choose File (Up to 100MB)</label>
+      <input type="file" id="uploadFile" name="file" class="form-control" required>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="uploadCat">Target Folder</label>
+      <select id="uploadCat" name="category_id" class="form-control">
+        <option value="">(Root / No Folder)</option>
+        {{range .Data.Categories}}
+        <option value="{{.ID}}" {{if eq $.Data.ActiveCatID .ID}}selected{{end}}>{{.Path}}</option>
+        {{end}}
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="uploadTags">Tags (comma-separated)</label>
+      <input type="text" id="uploadTags" name="tags" class="form-control" placeholder="e.g. music, project, report">
+    </div>
+
+    <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1.5rem;">
+      <button type="button" onclick="closeDialog('uploadModal')" class="btn btn-secondary">Cancel</button>
+      <button type="submit" class="btn btn-primary">Start Upload</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- New Folder Modal (Up to 4 Levels Deep) -->
+<dialog id="folderModal">
+  <div class="dialog-header">
+    <h3 class="dialog-title">Create Folder / Sub-collection</h3>
+    <button onclick="closeDialog('folderModal')" class="dialog-close">&times;</button>
+  </div>
+  <form action="/categories" method="POST">
+    <input type="hidden" name="_csrf" value="{{.CSRFToken}}">
+
+    <div class="form-group">
+      <label class="form-label" for="folderName">Folder Name</label>
+      <input type="text" id="folderName" name="name" class="form-control" placeholder="e.g. 2026 Recordings" required>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="folderParent">Parent Folder (Max 4 levels nesting)</label>
+      <select id="folderParent" name="parent_id" class="form-control">
+        <option value="">(Root - Level 1)</option>
+        {{range .Data.Categories}}
+          {{if lt .Depth 4}}
+          <option value="{{.ID}}" {{if eq $.Data.ActiveCatID .ID}}selected{{end}}>
+            {{.Path}} (Level {{.Depth}})
+          </option>
+          {{end}}
+        {{end}}
+      </select>
+      <small style="color: var(--text-muted); font-size: 0.75rem; margin-top: 4px; display: block;">
+        Folders nested 4 levels deep cannot contain sub-folders.
+      </small>
+    </div>
+
+    <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1.5rem;">
+      <button type="button" onclick="closeDialog('folderModal')" class="btn btn-secondary">Cancel</button>
+      <button type="submit" class="btn btn-primary">Create Folder</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Share Modal -->
+<dialog id="shareModal">
+  <div class="dialog-header">
+    <h3 class="dialog-title">Generate Shareable Link</h3>
+    <button onclick="closeDialog('shareModal')" class="dialog-close">&times;</button>
+  </div>
+
+  <div id="existingShareSection" style="display: none; margin-bottom: 1.25rem; background: var(--primary-light); padding: 1rem; border-radius: 6px;">
+    <label class="form-label" style="color: var(--primary);">Active Share Link:</label>
+    <div style="display: flex; gap: 0.5rem;">
+      <input type="text" id="shareLinkInput" class="form-control" readonly style="background: #ffffff;">
+      <button type="button" class="btn btn-primary" onclick="copyToClipboard(document.getElementById('shareLinkInput').value, this)">Copy</button>
+    </div>
+  </div>
+
+  <form action="/items/share" method="POST">
+    <input type="hidden" name="_csrf" value="{{.CSRFToken}}">
+    <input type="hidden" id="shareItemId" name="item_id" value="">
+    <input type="hidden" id="shareItemType" name="item_type" value="">
+
+    <div class="form-group">
+      <label class="form-label" for="shareExpiry">Link Expiration</label>
+      <select id="shareExpiry" name="expiry" class="form-control">
+        <option value="never">Never expires (Permanent)</option>
+        <option value="1h">1 Hour</option>
+        <option value="24h">24 Hours (1 Day)</option>
+        <option value="7d">7 Days</option>
+        <option value="30d">30 Days</option>
+      </select>
+      <small style="color: var(--text-muted); font-size: 0.75rem; margin-top: 4px; display: block;">
+        Anyone with this public link can view and download the content without logging in.
+      </small>
+    </div>
+
+    <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1.5rem;">
+      <button type="button" onclick="closeDialog('shareModal')" class="btn btn-secondary">Close</button>
+      <button type="submit" class="btn btn-primary">Create / Update Share Link</button>
+    </div>
+  </form>
+</dialog>
+{{end}}
