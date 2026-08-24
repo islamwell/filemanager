@@ -155,22 +155,24 @@ go test -v -race ./...
 
 Because the application is written with pure-Go SQLite (`modernc.org/sqlite`) and embeds all templates/static assets via `embed.FS`, the entire application compiles into a single, self-contained binary with **zero external runtime dependencies**.
 
-### ⚡ Method 1: Automated 1-Command Production Installer (Recommended)
+### ⚡ Method 1: All-In-One Interactive Wizard & Menu (`install.sh`)
 
-A hardened, automated shell script is provided in `scripts/setup-linux.sh`. It automatically handles architecture detection, pre-flight disk/port checks, dedicated system user creation, directory sharding, permissions, hardened systemd service generation, and live health checks:
+A single all-in-one executable installer script is included at the root of the repository (`install.sh`). It includes an interactive terminal menu, a guided step-by-step wizard, express presets, Plesk reverse-proxy configuration, live backup creation, and service management:
 
 ```bash
-# Run with defaults (Port 8080, systemd service enabled)
-sudo ./scripts/setup-linux.sh
+# 1. Launch Interactive Menu & Wizard
+sudo ./install.sh
 
-# Or with custom options:
-sudo ./scripts/setup-linux.sh --port 9000 --host 127.0.0.1 --secure-cookie true
+# 2. Or run directly with presets:
+sudo ./install.sh --wizard     # Step-by-step interactive questionnaire
+sudo ./install.sh --express    # 1-Click install with standard production defaults
+sudo ./install.sh --plesk      # 1-Click install configured for Plesk (127.0.0.1:8080 HTTPS)
+sudo ./install.sh --status     # View live systemd status & journalctl logs
+sudo ./install.sh --backup     # Take compressed live archive of DB and storage
+sudo ./install.sh --uninstall  # Clean uninstallation
 
-# Full debug output:
-sudo ./scripts/setup-linux.sh --debug
-
-# Clean uninstallation:
-sudo ./scripts/setup-linux.sh --uninstall
+# 3. Or pass custom parameters:
+sudo ./install.sh --port 9000 --host 127.0.0.1 --max-size-mb 200 --secure-cookie true
 ```
 
 ---
