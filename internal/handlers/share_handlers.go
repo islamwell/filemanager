@@ -3,6 +3,7 @@ package handlers
 import (
 	"errors"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -89,11 +90,7 @@ func (h *ShareHandler) CreateShareLink(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	referer := r.Header.Get("Referer")
-	if referer == "" {
-		referer = "/"
-	}
-	http.Redirect(w, r, referer, http.StatusSeeOther)
+	http.Redirect(w, r, safeRedirectURL(r.Header.Get("Referer"), r.Host), http.StatusSeeOther)
 }
 
 // DeleteShareLink revokes a share token immediately.
@@ -107,11 +104,24 @@ func (h *ShareHandler) DeleteShareLink(w http.ResponseWriter, r *http.Request) {
 	token := r.PathValue("token")
 	_ = h.Store.DeleteShareLink(token, user.ID)
 
-	referer := r.Header.Get("Referer")
-	if referer == "" {
-		referer = "/"
+	http.Redirect(w, r, safeRedirectURL(r.Header.Get("Referer"), r.Host), http.StatusSeeOther)
+}
+
+func safeRedirectURL(raw, host string) string {
+	if raw == "" {
+		return "/"
 	}
-	http.Redirect(w, r, referer, http.StatusSeeOther)
+	if strings.HasPrefix(raw, "/") && !strings.HasPrefix(raw, "//") {
+		return raw
+	}
+	if u, err := url.Parse(raw); err == nil {
+		if u.Host == "" || u.Host == host {
+			if u.Path != "" {
+				return u.RequestURI()
+			}
+		}
+	}
+	return "/"
 }
 
 // ViewSharedItem provides unauthenticated public access to a shared file or snippet.

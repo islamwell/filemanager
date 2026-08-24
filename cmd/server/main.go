@@ -114,11 +114,10 @@ func main() {
 
 	serverAddr := fmt.Sprintf("%s:%d", cfg.Host, cfg.Port)
 	srv := &http.Server{
-		Addr:         serverAddr,
-		Handler:      handler,
-		ReadTimeout:  30 * time.Second,
-		WriteTimeout: 60 * time.Second,
-		IdleTimeout:  120 * time.Second,
+		Addr:              serverAddr,
+		Handler:           handler,
+		ReadHeaderTimeout: 10 * time.Second, // Protects against Slowloris attacks
+		IdleTimeout:       120 * time.Second,
 	}
 
 	// Graceful Shutdown Channel
