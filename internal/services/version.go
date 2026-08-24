@@ -2,8 +2,8 @@ package services
 
 // AppVersion constants track the current semantic version and update timestamp.
 const (
-	Version   = "v1.0.0"
-	UpdatedAt = "2026-08-24 01:45"
+	Version   = "v1.0.1"
+	UpdatedAt = "2026-08-24 19:59"
 )
 
 // GetFooterVersion returns the formatted version string for the HTML footer.

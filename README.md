@@ -151,6 +151,189 @@ go test -v -race ./...
 
 ---
 
+## 🐧 Linux Installation & Production Deployment Guide
+
+Because the application is written with pure-Go SQLite (`modernc.org/sqlite`) and embeds all templates/static assets via `embed.FS`, the entire application compiles into a single, self-contained binary with **zero external runtime dependencies**.
+
+### Step 1: Building the Binary for Linux
+
+#### Option A: Build on Linux Directly
+```bash
+# Ubuntu / Debian
+sudo apt update && sudo apt install -y golang git
+
+# Clone and build
+git clone <your-repo-url> /tmp/filemanager-src
+cd /tmp/filemanager-src
+CGO_ENABLED=0 go build -ldflags="-s -w" -o filemanager cmd/server/main.go
+```
+
+#### Option B: Cross-Compile from macOS / Windows
+You can cross-compile on your development machine without installing any Linux toolchains:
+
+```bash
+# Build for 64-bit Linux (x86_64 / amd64)
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o filemanager-linux-amd64 cmd/server/main.go
+
+# Or build for ARM64 Linux (e.g. Raspberry Pi, AWS Graviton)
+CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o filemanager-linux-arm64 cmd/server/main.go
+
+# Transfer binary to your Linux server
+scp filemanager-linux-amd64 user@your-server-ip:/tmp/filemanager
+```
+
+---
+
+### Step 2: System Setup & Directory Structure
+
+Run these commands on your Linux server to create a dedicated system user and storage locations:
+
+```bash
+# 1. Create a dedicated non-login system user
+sudo useradd -r -s /usr/sbin/nologin -d /var/lib/filemanager filemanager
+
+# 2. Place binary in /usr/local/bin
+sudo mv /tmp/filemanager /usr/local/bin/filemanager
+sudo chmod +x /usr/local/bin/filemanager
+
+# 3. Create persistent directories for SQLite database and uploaded files
+sudo mkdir -p /var/lib/filemanager/data
+sudo mkdir -p /var/lib/filemanager/storage
+sudo mkdir -p /etc/filemanager
+
+# 4. Set ownership and secure permissions (0750)
+sudo chown -R filemanager:filemanager /var/lib/filemanager
+sudo chmod -R 750 /var/lib/filemanager
+```
+
+---
+
+### Step 3: Configure Environment Variables
+
+Create `/etc/filemanager/filemanager.env`:
+
+```bash
+sudo tee /etc/filemanager/filemanager.env > /dev/null << 'EOF'
+PORT=8080
+HOST=127.0.0.1
+DATABASE_PATH=/var/lib/filemanager/data/filemanager.db
+STORAGE_DIR=/var/lib/filemanager/storage
+MAX_FILE_SIZE=104857600
+SECURE_COOKIE=true
+EOF
+
+sudo chmod 600 /etc/filemanager/filemanager.env
+sudo chown filemanager:filemanager /etc/filemanager/filemanager.env
+```
+
+---
+
+### Step 4: Create systemd Service
+
+Create `/etc/systemd/system/filemanager.service`:
+
+```bash
+sudo tee /etc/systemd/system/filemanager.service > /dev/null << 'EOF'
+[Unit]
+Description=Go File Manager Web Service
+After=network.target
+
+[Service]
+Type=simple
+User=filemanager
+Group=filemanager
+WorkingDirectory=/var/lib/filemanager
+EnvironmentFile=/etc/filemanager/filemanager.env
+ExecStart=/usr/local/bin/filemanager
+Restart=always
+RestartSec=5s
+
+# Security Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/filemanager
+
+[Install]
+WantedBy=multi-user.target
+EOF
+```
+
+Enable and start the service:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now filemanager
+
+# Check status and logs
+sudo systemctl status filemanager
+sudo journalctl -u filemanager -f
+```
+
+---
+
+### Step 5: Configure Reverse Proxy (HTTPS / SSL)
+
+#### Option A: Caddy (Easiest - Automatic SSL)
+Install Caddy and add to `/etc/caddy/Caddyfile`:
+
+```caddy
+files.yourdomain.com {
+    reverse_proxy 127.0.0.1:8080
+}
+```
+
+Reload Caddy:
+```bash
+sudo systemctl reload caddy
+```
+
+#### Option B: Nginx + Certbot
+Create `/etc/nginx/sites-available/filemanager`:
+
+```nginx
+server {
+    server_name files.yourdomain.com;
+
+    # Allow large file uploads (100MB)
+    client_max_body_size 100M;
+
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Stream uploads directly to backend without disk buffering in Nginx
+        proxy_request_buffering off;
+        proxy_buffering off;
+    }
+}
+```
+
+Enable site and acquire free SSL certificate:
+```bash
+sudo ln -s /etc/nginx/sites-available/filemanager /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
+sudo certbot --nginx -d files.yourdomain.com
+```
+
+---
+
+### Step 6: Firewall Setup
+
+```bash
+# Ubuntu / Debian (UFW)
+sudo ufw allow 80/tcp
+sudo ufw allow 443/tcp
+sudo ufw enable
+```
+
+---
+
 ## 🔍 Self-Critique & Scaling Beyond 10 Users
 
 ### Assumptions & Current Limitations
