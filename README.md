@@ -155,7 +155,29 @@ go test -v -race ./...
 
 Because the application is written with pure-Go SQLite (`modernc.org/sqlite`) and embeds all templates/static assets via `embed.FS`, the entire application compiles into a single, self-contained binary with **zero external runtime dependencies**.
 
-### Step 1: Building the Binary for Linux
+### ⚡ Method 1: Automated 1-Command Production Installer (Recommended)
+
+A hardened, automated shell script is provided in `scripts/setup-linux.sh`. It automatically handles architecture detection, pre-flight disk/port checks, dedicated system user creation, directory sharding, permissions, hardened systemd service generation, and live health checks:
+
+```bash
+# Run with defaults (Port 8080, systemd service enabled)
+sudo ./scripts/setup-linux.sh
+
+# Or with custom options:
+sudo ./scripts/setup-linux.sh --port 9000 --host 127.0.0.1 --secure-cookie true
+
+# Full debug output:
+sudo ./scripts/setup-linux.sh --debug
+
+# Clean uninstallation:
+sudo ./scripts/setup-linux.sh --uninstall
+```
+
+---
+
+### 🛠️ Method 2: Manual Step-by-Step Installation
+
+#### Step 1: Building the Binary for Linux
 
 #### Option A: Build on Linux Directly
 ```bash
