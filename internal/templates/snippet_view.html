@@ -72,6 +72,14 @@
     <input type="hidden" id="shareItemType" name="item_type" value="snippet">
 
     <div class="form-group">
+      <label class="form-label" for="shareAlias">Custom URL Alias (Optional)</label>
+      <input type="text" id="shareAlias" name="custom_alias" class="form-control" placeholder="e.g. my-code-snippet" pattern="[a-zA-Z0-9_-]{3,64}">
+      <small style="color: var(--text-muted); font-size: 0.75rem; margin-top: 4px; display: block;">
+        Leave blank to generate a secure random token, or enter a custom vanity alias.
+      </small>
+    </div>
+
+    <div class="form-group">
       <label class="form-label" for="shareExpiry">Link Expiration</label>
       <select id="shareExpiry" name="expiry" class="form-control">
         <option value="never">Never expires (Permanent)</option>

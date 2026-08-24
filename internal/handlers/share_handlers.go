@@ -71,10 +71,38 @@ func (h *ShareHandler) CreateShareLink(w http.ResponseWriter, r *http.Request) {
 		// "never" or empty leaves expiresAt as nil
 	}
 
-	token, err := auth.GenerateShareToken()
-	if err != nil {
-		http.Redirect(w, r, "/?err=Failed+to+generate+share+token", http.StatusSeeOther)
-		return
+	customAlias := strings.TrimSpace(r.FormValue("custom_alias"))
+	var token string
+	if customAlias != "" {
+		// Validate custom alias length (3 - 64 chars) and allowed characters
+		if len(customAlias) < 3 || len(customAlias) > 64 {
+			http.Redirect(w, r, "/?err=Custom+alias+must+be+between+3+and+64+characters", http.StatusSeeOther)
+			return
+		}
+		for _, ch := range customAlias {
+			if !((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '_' || ch == '-') {
+				http.Redirect(w, r, "/?err=Custom+alias+can+only+contain+alphanumeric+characters,+hyphens,+and+underscores", http.StatusSeeOther)
+				return
+			}
+		}
+
+		// Disallow reserved paths
+		reserved := map[string]bool{
+			"download": true, "audio": true, "static": true, "login": true, "register": true,
+			"logout": true, "search": true, "files": true, "snippets": true, "categories": true, "items": true,
+		}
+		if reserved[strings.ToLower(customAlias)] {
+			http.Redirect(w, r, "/?err=This+custom+alias+is+reserved.+Please+choose+another.", http.StatusSeeOther)
+			return
+		}
+		token = customAlias
+	} else {
+		var err error
+		token, err = auth.GenerateShareToken()
+		if err != nil {
+			http.Redirect(w, r, "/?err=Failed+to+generate+share+token", http.StatusSeeOther)
+			return
+		}
 	}
 
 	link := &models.ShareLink{
@@ -86,6 +114,10 @@ func (h *ShareHandler) CreateShareLink(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.Store.CreateShareLink(link); err != nil {
+		if strings.Contains(err.Error(), "UNIQUE constraint failed") || strings.Contains(err.Error(), "already exists") {
+			http.Redirect(w, r, "/?err=Custom+link+alias+is+already+taken.+Please+choose+another.", http.StatusSeeOther)
+			return
+		}
 		http.Redirect(w, r, "/?err="+err.Error(), http.StatusSeeOther)
 		return
 	}

@@ -30,21 +30,24 @@ A secure, high-performance, self-contained file and snippet manager web applicat
 6. **Tags & Fuzzy Search**:
    - Tagging on all files and snippets with aggregated tag pills.
    - Multi-stage fuzzy search algorithm incorporating exact match, prefix matching, word boundary heuristics, subsequence matching, and Levenshtein typo tolerance.
-7. **Shareable Public Links**:
-   - 32-byte cryptographically secure random tokens (`base64url`).
+7. **Shareable Public Links & Custom Vanity URLs**:
+   - 32-byte cryptographically secure random tokens (`base64url`) or **custom vanity aliases** (e.g. `/share/q3-presentation`, `/share/team-audio`).
    - Configurable expiration (1 hour, 24 hours, 7 days, 30 days, or permanent).
    - Instant owner revocation.
    - Public view, download, and audio playback without authentication.
    - Automatic access view counter.
-8. **Security Hardening**:
+8. **Clipboard Paste & Screenshot Uploads**:
+   - Press <kbd>Ctrl+V</kbd> / <kbd>Cmd+V</kbd> anywhere to instantly upload pasted screenshots or images from the clipboard.
+   - Paste plain text directly to create new text snippets with live character counting.
+9. **Security Hardening**:
    - Double-submit CSRF cookie protection on all state-changing endpoints.
    - Context-aware XSS escaping with Go's `html/template`.
    - Strict HTTP security headers (`Content-Security-Policy`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy`).
-9. **Zero External Runtime Dependencies**:
-   - HTML templates, CSS, and JS are embedded directly into the binary via `embed.FS`.
-   - Pure Go SQLite database engine (`modernc.org/sqlite`) requires no C compiler (CGO-free).
-10. **Footer Versioning**:
-    - Displays version and update timestamp (`v1.0.0 (updated 2026-08-24 01:45)`).
+10. **Zero External Runtime Dependencies**:
+    - HTML templates, CSS, and JS are embedded directly into the binary via `embed.FS`.
+    - Pure Go SQLite database engine (`modernc.org/sqlite`) requires no C compiler (CGO-free).
+11. **Footer Versioning**:
+    - Displays version and update timestamp (`v1.0.6 (updated 2026-08-25 00:28)`).
 
 ---
 

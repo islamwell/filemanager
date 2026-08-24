@@ -100,3 +100,71 @@ function indicateCopySuccess(btn) {
     btn.classList.remove('btn-primary');
   }, 2000);
 }
+
+// Global Clipboard Paste Handler (Screenshots, Images, and Text)
+window.addEventListener('paste', function(e) {
+  const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
+  const isInputActive = activeTag === 'input' || activeTag === 'textarea' || activeTag === 'select';
+
+  // Check for image blob in clipboard data
+  if (e.clipboardData && e.clipboardData.items) {
+    for (let i = 0; i < e.clipboardData.items.length; i++) {
+      const item = e.clipboardData.items[i];
+      if (item.type.indexOf('image') !== -1) {
+        e.preventDefault();
+        const file = item.getAsFile();
+        if (!file) return;
+
+        const pasteModal = document.getElementById('pasteImageModal');
+        const preview = document.getElementById('pasteImagePreview');
+        const meta = document.getElementById('pasteImageMeta');
+        const filenameInput = document.getElementById('pastedFileName');
+        const fileInput = document.getElementById('pastedFileInput');
+
+        if (pasteModal && preview && fileInput) {
+          const now = new Date();
+          const timestamp = now.getFullYear() +
+            String(now.getMonth() + 1).padStart(2, '0') +
+            String(now.getDate()).padStart(2, '0') + '_' +
+            String(now.getHours()).padStart(2, '0') +
+            String(now.getMinutes()).padStart(2, '0') +
+            String(now.getSeconds()).padStart(2, '0');
+
+          const ext = file.type === 'image/jpeg' ? '.jpg' : file.type === 'image/webp' ? '.webp' : '.png';
+          const defaultName = 'screenshot_' + timestamp + ext;
+
+          if (filenameInput) filenameInput.value = defaultName;
+          preview.src = URL.createObjectURL(file);
+          if (meta) {
+            const kbSize = (file.size / 1024).toFixed(1);
+            meta.textContent = `Image Type: ${file.type} | Size: ${kbSize} KB`;
+          }
+
+          // Transfer blob to file input using DataTransfer
+          try {
+            const dataTransfer = new DataTransfer();
+            const namedFile = new File([file], defaultName, { type: file.type });
+            dataTransfer.items.add(namedFile);
+            fileInput.files = dataTransfer.files;
+          } catch (err) {
+            console.warn('DataTransfer not supported in browser:', err);
+          }
+
+          openDialog('pasteImageModal');
+          return;
+        }
+      }
+    }
+  }
+
+  // Handle plain text paste when NOT actively focused in an input
+  if (!isInputActive && e.clipboardData) {
+    const text = e.clipboardData.getData('text');
+    if (text && text.trim().length > 0 && window.location.pathname === '/') {
+      const snippetEditor = document.getElementById('snippetContent');
+      if (snippetEditor) {
+        snippetEditor.value = text;
+      }
+    }
+  }
+});

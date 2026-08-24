@@ -54,6 +54,9 @@ func (h *FileHandler) UploadFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	rawFilename := header.Filename
+	if customName := strings.TrimSpace(r.FormValue("filename")); customName != "" {
+		rawFilename = customName
+	}
 	sanitizedName := SanitizeFilename(rawFilename)
 	categoryIDStr := strings.TrimSpace(r.FormValue("category_id"))
 	var categoryID *string

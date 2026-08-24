@@ -144,3 +144,87 @@ func TestShareTokenGenerationAndPublicAccess(t *testing.T) {
 		t.Errorf("expected 404 for revoked share token, got %d", afterRevRR.Code)
 	}
 }
+
+func TestCustomShareSlugAndVanityAliases(t *testing.T) {
+	st, base := setupTestEnv(t)
+	defer st.Close()
+
+	shareHandler := handlers.NewShareHandler(base)
+
+	user := &models.User{Username: "grace", PasswordHash: "hash"}
+	_ = st.CreateUser(user)
+
+	tempFile := filepath.Join(base.Config.StorageDir, "vanity_test.txt")
+	_ = os.WriteFile(tempFile, []byte("Vanity URL content"), 0644)
+
+	fileItem := &models.FileItem{
+		UserID:           user.ID,
+		OriginalFilename: "presentation.pdf",
+		StoredPath:       tempFile,
+		FileSize:         18,
+		MimeType:         "application/pdf",
+		Sha256Checksum:   "checksum123",
+	}
+	_ = st.CreateFile(fileItem)
+
+	// 1. Create with Custom Vanity Alias: "my-q3-deck"
+	form := url.Values{
+		"item_id":      {fileItem.ID},
+		"item_type":    {"file"},
+		"custom_alias": {"my-q3-deck"},
+		"expiry":       {"7d"},
+	}
+
+	req := httptest.NewRequest("POST", "/items/share", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	ctx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+	req = req.WithContext(ctx)
+	rr := httptest.NewRecorder()
+
+	shareHandler.CreateShareLink(rr, req)
+	if rr.Code != http.StatusSeeOther {
+		t.Fatalf("expected 303 redirect, got %d", rr.Code)
+	}
+
+	// 2. Access via Vanity URL
+	pubReq := httptest.NewRequest("GET", "/share/my-q3-deck", nil)
+	pubReq.SetPathValue("token", "my-q3-deck")
+	pubRR := httptest.NewRecorder()
+
+	shareHandler.ViewSharedItem(pubRR, pubReq)
+	if pubRR.Code != http.StatusOK {
+		t.Fatalf("expected 200 OK for custom vanity share URL, got %d", pubRR.Code)
+	}
+
+	// 3. Test Invalid Characters in Alias (should reject)
+	badForm := url.Values{
+		"item_id":      {fileItem.ID},
+		"item_type":    {"file"},
+		"custom_alias": {"invalid/path?traversal"},
+	}
+	badReq := httptest.NewRequest("POST", "/items/share", strings.NewReader(badForm.Encode()))
+	badReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	badReq = badReq.WithContext(ctx)
+	badRR := httptest.NewRecorder()
+
+	shareHandler.CreateShareLink(badRR, badReq)
+	if !strings.Contains(badRR.Header().Get("Location"), "err=") {
+		t.Errorf("expected error redirect for invalid custom alias characters")
+	}
+
+	// 4. Test Reserved Alias (e.g. "download", "audio")
+	resForm := url.Values{
+		"item_id":      {fileItem.ID},
+		"item_type":    {"file"},
+		"custom_alias": {"download"},
+	}
+	resReq := httptest.NewRequest("POST", "/items/share", strings.NewReader(resForm.Encode()))
+	resReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	resReq = resReq.WithContext(ctx)
+	resRR := httptest.NewRecorder()
+
+	shareHandler.CreateShareLink(resRR, resReq)
+	if !strings.Contains(resRR.Header().Get("Location"), "err=") {
+		t.Errorf("expected error redirect for reserved custom alias")
+	}
+}
