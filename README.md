@@ -343,6 +343,35 @@ sudo nginx -t && sudo systemctl reload nginx
 sudo certbot --nginx -d files.yourdomain.com
 ```
 
+#### Option C: Plesk Control Panel (Hosting Servers)
+
+If **Plesk** is already installed on your server:
+
+1. **Domain Creation**: In Plesk, add a Subdomain (e.g. `files.yourdomain.com`) or Domain.
+2. **SSL / TLS**: Issue a free Let's Encrypt certificate via the Plesk **SSL/TLS Certificates** icon.
+3. **Configure Reverse Proxy in Plesk**:
+   - Go to **Domains** > `files.yourdomain.com` > **Apache & nginx Settings**.
+   - Scroll to **Additional nginx directives** and paste:
+     ```nginx
+     location / {
+         proxy_pass http://127.0.0.1:8080;
+         proxy_http_version 1.1;
+         proxy_set_header Host $host;
+         proxy_set_header X-Real-IP $remote_addr;
+         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+         proxy_set_header X-Forwarded-Proto $scheme;
+
+         proxy_request_buffering off;
+         proxy_buffering off;
+         client_max_body_size 100M;
+     }
+     ```
+   - Uncheck **Proxy mode** (or set smart static file processing to off if you want all requests routed to Go).
+   - Click **Apply**.
+4. **Web Application Firewall (WAF / ModSecurity)**:
+   - If users upload code snippets with SQL or script tags, ModSecurity may flag false-positives.
+   - Go to **Web Application Firewall (ModSecurity)** for `files.yourdomain.com` and set it to **Detection only** or **Off** if 403 errors occur.
+
 ---
 
 ### Step 6: Firewall Setup
