@@ -81,6 +81,55 @@ func (f *FileItem) Extension() string {
 	return strings.ToLower(strings.TrimPrefix(ext, "."))
 }
 
+// CategoryIDStr returns the category ID as a plain string, or empty string if nil.
+func (f *FileItem) CategoryIDStr() string {
+	if f.CategoryID != nil {
+		return *f.CategoryID
+	}
+	return ""
+}
+
+// IsImage returns true if the file is an image.
+func (f *FileItem) IsImage() bool {
+	if strings.HasPrefix(strings.ToLower(f.MimeType), "image/") {
+		return true
+	}
+	switch f.Extension() {
+	case "png", "jpg", "jpeg", "gif", "webp", "svg", "bmp", "ico":
+		return true
+	}
+	return false
+}
+
+// IsVideo returns true if the file is a playable video.
+func (f *FileItem) IsVideo() bool {
+	if strings.HasPrefix(strings.ToLower(f.MimeType), "video/") {
+		return true
+	}
+	switch f.Extension() {
+	case "mp4", "webm", "ogg", "mov", "m4v":
+		return true
+	}
+	return false
+}
+
+// IsPDF returns true if the file is a PDF document.
+func (f *FileItem) IsPDF() bool {
+	return strings.ToLower(f.MimeType) == "application/pdf" || f.Extension() == "pdf"
+}
+
+// IsAudio returns true if the file is an audio file.
+func (f *FileItem) IsAudio() bool {
+	if f.IsMP3 || strings.HasPrefix(strings.ToLower(f.MimeType), "audio/") {
+		return true
+	}
+	switch f.Extension() {
+	case "mp3", "wav", "ogg", "m4a", "aac", "flac":
+		return true
+	}
+	return false
+}
+
 // Snippet represents a text paste up to 10,000 runes.
 type Snippet struct {
 	ID             string     `json:"id"`
@@ -101,6 +150,20 @@ type Snippet struct {
 // CharacterCount returns the number of UTF-8 runes in the snippet content.
 func (s *Snippet) CharacterCount() int {
 	return len([]rune(s.Content))
+}
+
+// CategoryIDStr returns the category ID as a plain string, or empty string if nil.
+func (s *Snippet) CategoryIDStr() string {
+	if s.CategoryID != nil {
+		return *s.CategoryID
+	}
+	return ""
+}
+
+// IsMarkdown returns true if the snippet language is markdown.
+func (s *Snippet) IsMarkdown() bool {
+	lang := strings.ToLower(strings.TrimSpace(s.Language))
+	return lang == "markdown" || lang == "md"
 }
 
 // SnippetPreview returns a truncated snippet string for dashboard display.

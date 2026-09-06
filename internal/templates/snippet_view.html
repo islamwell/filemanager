@@ -19,7 +19,13 @@
         </div>
       </div>
 
-      <div style="display: flex; gap: 0.5rem; align-items: center;">
+      <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+        <a href="/snippets/{{.Data.ID}}/edit" class="btn btn-secondary btn-sm" title="Edit Snippet">
+          ✏️ Edit
+        </a>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="openMoveModal('{{.Data.ID}}', 'snippet', '{{if .Data.CategoryID}}{{.Data.CategoryID}}{{end}}', '{{.Data.Title}}')" title="Move to Folder">
+          📁 Move
+        </button>
         <button type="button" class="btn btn-secondary btn-sm" onclick="copyToClipboard(document.getElementById('snippetRawCode').textContent, this)">
           📋 Copy Content
         </button>
@@ -41,8 +47,22 @@
     </div>
     {{end}}
 
-    <div style="position: relative; background: #0f172a; color: #f8fafc; border-radius: 8px; padding: 1.25rem; overflow-x: auto;">
+    <!-- View Mode Tabs -->
+    <div style="display: flex; gap: 0.5rem; margin-bottom: 0.75rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">
+      <button type="button" id="tabRawBtn" class="btn btn-primary btn-sm" onclick="switchSnippetTab('raw')">
+        Raw Text / Code
+      </button>
+      <button type="button" id="tabMdBtn" class="btn btn-secondary btn-sm" onclick="switchSnippetTab('markdown')">
+        Markdown Preview
+      </button>
+    </div>
+
+    <div id="snippetRawContainer" style="position: relative; background: #0f172a; color: #f8fafc; border-radius: 8px; padding: 1.25rem; overflow-x: auto;">
       <pre id="snippetRawCode" style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 0.9rem; line-height: 1.6; white-space: pre-wrap; word-break: break-word;">{{.Data.Content}}</pre>
+    </div>
+
+    <div id="snippetMdContainer" style="display: none; background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 1.5rem;" class="markdown-body">
+      <!-- Dynamically filled on tab switch -->
     </div>
 
     <div style="margin-top: 1.5rem; display: flex; justify-content: space-between;">
@@ -93,6 +113,31 @@
     <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1.5rem;">
       <button type="button" onclick="closeDialog('shareModal')" class="btn btn-secondary">Close</button>
       <button type="submit" class="btn btn-primary">Create / Update Link</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Move Item Modal -->
+<dialog id="moveModal">
+  <div class="dialog-header">
+    <h3 class="dialog-title" id="moveModalTitle">📁 Move Snippet</h3>
+    <button onclick="closeDialog('moveModal')" class="dialog-close">&times;</button>
+  </div>
+  <form id="moveItemForm" method="POST">
+    <input type="hidden" name="_csrf" value="{{.CSRFToken}}">
+    <p id="moveItemDesc" style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;"></p>
+    <div class="form-group">
+      <label class="form-label" for="moveTargetCat">Destination Folder</label>
+      <select id="moveTargetCat" name="category_id" class="form-control">
+        <option value="">(Root / No Folder)</option>
+        {{range .Data.Categories}}
+        <option value="{{.ID}}" {{if eq $.Data.CategoryIDStr .ID}}selected{{end}}>{{.Path}}</option>
+        {{end}}
+      </select>
+    </div>
+    <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1.5rem;">
+      <button type="button" onclick="closeDialog('moveModal')" class="btn btn-secondary">Cancel</button>
+      <button type="submit" class="btn btn-primary">Move Here</button>
     </div>
   </form>
 </dialog>

@@ -168,3 +168,202 @@ window.addEventListener('paste', function(e) {
     }
   }
 });
+
+// In-Browser Media Lightbox Preview (Images, PDFs, Videos)
+function openMediaPreview(url, filename, mimeType) {
+  const modal = document.getElementById('mediaPreviewModal');
+  const titleEl = document.getElementById('mediaPreviewTitle');
+  const bodyEl = document.getElementById('mediaPreviewBody');
+  const dlBtn = document.getElementById('mediaDownloadBtn');
+
+  if (!modal || !bodyEl) return;
+
+  if (titleEl) titleEl.textContent = filename || 'Media Preview';
+  if (dlBtn) {
+    dlBtn.href = url.replace('/view', '/download');
+    dlBtn.setAttribute('download', filename);
+  }
+
+  bodyEl.innerHTML = '';
+  const lowerMime = (mimeType || '').toLowerCase();
+  const lowerUrl = (url || '').toLowerCase();
+
+  if (lowerMime.startsWith('image/') || lowerUrl.match(/\.(png|jpe?g|gif|webp|svg|ico|bmp)$/)) {
+    const img = document.createElement('img');
+    img.src = url;
+    img.alt = filename;
+    img.style.maxWidth = '100%';
+    img.style.maxHeight = '70vh';
+    img.style.borderRadius = '6px';
+    img.style.boxShadow = '0 4px 16px rgba(0,0,0,0.15)';
+    bodyEl.appendChild(img);
+  } else if (lowerMime.startsWith('video/') || lowerUrl.match(/\.(mp4|webm|ogg|mov|m4v)$/)) {
+    const video = document.createElement('video');
+    video.src = url;
+    video.controls = true;
+    video.autoplay = true;
+    video.style.width = '100%';
+    video.style.maxHeight = '70vh';
+    video.style.borderRadius = '6px';
+    video.style.background = '#000';
+    bodyEl.appendChild(video);
+  } else if (lowerMime === 'application/pdf' || lowerUrl.endsWith('.pdf')) {
+    const iframe = document.createElement('iframe');
+    iframe.src = url;
+    iframe.style.width = '100%';
+    iframe.style.height = '70vh';
+    iframe.style.border = 'none';
+    iframe.style.borderRadius = '6px';
+    bodyEl.appendChild(iframe);
+  } else {
+    const iframe = document.createElement('iframe');
+    iframe.src = url;
+    iframe.style.width = '100%';
+    iframe.style.height = '70vh';
+    iframe.style.border = 'none';
+    bodyEl.appendChild(iframe);
+  }
+
+  openDialog('mediaPreviewModal');
+}
+
+function closeMediaPreview() {
+  const bodyEl = document.getElementById('mediaPreviewBody');
+  if (bodyEl) {
+    const video = bodyEl.querySelector('video');
+    if (video) video.pause();
+    bodyEl.innerHTML = '';
+  }
+  closeDialog('mediaPreviewModal');
+}
+
+// Move Item Modal (Files and Snippets)
+function openMoveModal(itemId, itemType, currentCatId, title) {
+  const form = document.getElementById('moveItemForm');
+  const titleEl = document.getElementById('moveModalTitle');
+  const descEl = document.getElementById('moveItemDesc');
+  const catSelect = document.getElementById('moveTargetCat');
+
+  if (form) {
+    form.action = itemType === 'file' ? ('/files/' + itemId + '/move') : ('/snippets/' + itemId + '/move');
+  }
+  if (titleEl) {
+    titleEl.textContent = '📁 Move ' + (itemType === 'file' ? 'File' : 'Snippet');
+  }
+  if (descEl) {
+    descEl.textContent = 'Moving: ' + (title || itemId);
+  }
+  if (catSelect) {
+    catSelect.value = currentCatId || '';
+  }
+
+  openDialog('moveModal');
+}
+
+// Drag & Drop File Upload Handlers
+let dragCounter = 0;
+window.addEventListener('dragenter', function(e) {
+  if (e.dataTransfer && e.dataTransfer.types && Array.from(e.dataTransfer.types).includes('Files')) {
+    e.preventDefault();
+    dragCounter++;
+    const overlay = document.getElementById('dropOverlay');
+    if (overlay) overlay.style.display = 'flex';
+  }
+});
+
+window.addEventListener('dragleave', function(e) {
+  dragCounter--;
+  if (dragCounter <= 0) {
+    dragCounter = 0;
+    const overlay = document.getElementById('dropOverlay');
+    if (overlay) overlay.style.display = 'none';
+  }
+});
+
+window.addEventListener('dragover', function(e) {
+  e.preventDefault();
+});
+
+window.addEventListener('drop', function(e) {
+  dragCounter = 0;
+  const overlay = document.getElementById('dropOverlay');
+  if (overlay) overlay.style.display = 'none';
+
+  if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+    e.preventDefault();
+    const fileInput = document.getElementById('uploadFile');
+    if (fileInput) {
+      fileInput.files = e.dataTransfer.files;
+      openDialog('uploadModal');
+    }
+  }
+});
+
+// Markdown Rendering & Tab Switching for Snippet View
+function switchSnippetTab(mode) {
+  const rawContainer = document.getElementById('snippetRawContainer');
+  const mdContainer = document.getElementById('snippetMdContainer');
+  const rawBtn = document.getElementById('tabRawBtn');
+  const mdBtn = document.getElementById('tabMdBtn');
+
+  if (!rawContainer || !mdContainer) return;
+
+  if (mode === 'markdown') {
+    rawContainer.style.display = 'none';
+    mdContainer.style.display = 'block';
+    if (rawBtn) { rawBtn.classList.remove('btn-primary'); rawBtn.classList.add('btn-secondary'); }
+    if (mdBtn) { mdBtn.classList.remove('btn-secondary'); mdBtn.classList.add('btn-primary'); }
+
+    const rawEl = document.getElementById('snippetRawCode');
+    if (rawEl && !mdContainer.dataset.rendered) {
+      mdContainer.innerHTML = renderMarkdown(rawEl.textContent);
+      mdContainer.dataset.rendered = 'true';
+    }
+  } else {
+    rawContainer.style.display = 'block';
+    mdContainer.style.display = 'none';
+    if (rawBtn) { rawBtn.classList.remove('btn-secondary'); rawBtn.classList.add('btn-primary'); }
+    if (mdBtn) { mdBtn.classList.remove('btn-primary'); mdBtn.classList.add('btn-secondary'); }
+  }
+}
+
+// Simple and safe client-side Markdown parser
+function renderMarkdown(text) {
+  if (!text) return '';
+
+  let html = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+
+  // Fenced code blocks ```lang\ncode\n```
+  html = html.replace(/```([a-zA-Z0-9_-]*)\n([\s\S]*?)```/g, function(_, lang, code) {
+    return `<pre class="md-code-block" data-lang="${lang}"><code>${code}</code></pre>`;
+  });
+
+  // Inline code `code`
+  html = html.replace(/`([^`]+)`/g, '<code class="md-inline-code">$1</code>');
+
+  // Headings
+  html = html.replace(/^### (.*$)/gim, '<h3 class="md-h3">$1</h3>');
+  html = html.replace(/^## (.*$)/gim, '<h2 class="md-h2">$1</h2>');
+  html = html.replace(/^# (.*$)/gim, '<h1 class="md-h1">$1</h1>');
+
+  // Blockquotes
+  html = html.replace(/^\> (.*$)/gim, '<blockquote class="md-quote">$1</blockquote>');
+
+  // Bold & Italic
+  html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+  html = html.replace(/~~([^~]+)~~/g, '<del>$1</del>');
+
+  // Unordered list items
+  html = html.replace(/^\s*[\-\*] (.*$)/gim, '<li class="md-li">$1</li>');
+  html = html.replace(/((?:<li class="md-li">.*<\/li>\s*)+)/g, '<ul class="md-ul">$1</ul>');
+
+  // Paragraphs & Line Breaks
+  html = html.replace(/\n\n/g, '<p style="margin: 0.75rem 0;"></p>');
+  html = html.replace(/\n/g, '<br>');
+
+  return html;
+}

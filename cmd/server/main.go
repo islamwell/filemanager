@@ -78,6 +78,7 @@ func main() {
 	mux.HandleFunc("GET /share/{token}", shareHandler.ViewSharedItem)
 	mux.HandleFunc("GET /share/{token}/download", shareHandler.DownloadSharedFile)
 	mux.HandleFunc("GET /share/{token}/audio", shareHandler.AudioSharedStream)
+	mux.HandleFunc("GET /share/{token}/view", shareHandler.ViewSharedMediaInline)
 
 	// Authenticated Workspace Routes
 	mux.Handle("GET /", middleware.RequireAuth(http.HandlerFunc(searchHandler.DashboardView)))
@@ -86,13 +87,18 @@ func main() {
 	// File Management Routes
 	mux.Handle("POST /files/upload", middleware.RequireAuth(http.HandlerFunc(fileHandler.UploadFile)))
 	mux.Handle("GET /files/{id}/download", middleware.RequireAuth(http.HandlerFunc(fileHandler.DownloadFile)))
+	mux.Handle("GET /files/{id}/view", middleware.RequireAuth(http.HandlerFunc(fileHandler.ViewFileInline)))
 	mux.Handle("GET /files/{id}/audio", middleware.RequireAuth(http.HandlerFunc(fileHandler.AudioStream)))
+	mux.Handle("POST /files/{id}/move", middleware.RequireAuth(http.HandlerFunc(fileHandler.MoveFile)))
 	mux.Handle("POST /files/{id}/delete", middleware.RequireAuth(http.HandlerFunc(fileHandler.DeleteFile)))
 
 	// Snippet Management Routes
 	mux.Handle("GET /snippets/new", middleware.RequireAuth(http.HandlerFunc(snippetHandler.NewSnippetView)))
 	mux.Handle("POST /snippets", middleware.RequireAuth(http.HandlerFunc(snippetHandler.CreateSnippet)))
 	mux.Handle("GET /snippets/{id}", middleware.RequireAuth(http.HandlerFunc(snippetHandler.ViewSnippet)))
+	mux.Handle("GET /snippets/{id}/edit", middleware.RequireAuth(http.HandlerFunc(snippetHandler.EditSnippetView)))
+	mux.Handle("POST /snippets/{id}/edit", middleware.RequireAuth(http.HandlerFunc(snippetHandler.UpdateSnippet)))
+	mux.Handle("POST /snippets/{id}/move", middleware.RequireAuth(http.HandlerFunc(snippetHandler.MoveSnippet)))
 	mux.Handle("POST /snippets/{id}/delete", middleware.RequireAuth(http.HandlerFunc(snippetHandler.DeleteSnippet)))
 
 	// Folder / Category Routes (Hierarchical max 4 levels)

@@ -243,3 +243,69 @@ func (h *FileHandler) DeleteFile(w http.ResponseWriter, r *http.Request) {
 
 	http.Redirect(w, r, "/?msg=File+deleted+successfully", http.StatusSeeOther)
 }
+
+// ViewFileInline serves media files (images, PDFs, videos, text) with inline Content-Disposition and byte-range streaming.
+func (h *FileHandler) ViewFileInline(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r.Context())
+	if user == nil {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
+	id := r.PathValue("id")
+	fileItem, err := h.Store.GetFileByID(id, user.ID)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	f, err := os.Open(fileItem.StoredPath)
+	if err != nil {
+		log.Printf("[VIEW ERROR] Disk file missing: %s (%v)", fileItem.StoredPath, err)
+		http.Error(w, "File content is missing from storage", http.StatusGone)
+		return
+	}
+	defer f.Close()
+
+	stat, err := f.Stat()
+	if err != nil {
+		http.Error(w, "Failed to stat file", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", fileItem.MimeType)
+	w.Header().Set("Accept-Ranges", "bytes")
+	SetContentDisposition(w, "inline", fileItem.OriginalFilename)
+	http.ServeContent(w, r, fileItem.OriginalFilename, stat.ModTime(), f)
+}
+
+// MoveFile updates the category/folder of a file.
+func (h *FileHandler) MoveFile(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r.Context())
+	if user == nil {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
+	id := r.PathValue("id")
+	categoryIDStr := strings.TrimSpace(r.FormValue("category_id"))
+	var newCatID *string
+	if categoryIDStr != "" {
+		newCatID = &categoryIDStr
+	}
+
+	if err := h.Store.MoveFile(id, user.ID, newCatID); err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			http.Redirect(w, r, "/?err=File+not+found", http.StatusSeeOther)
+			return
+		}
+		if errors.Is(err, store.ErrCategoryNotFound) {
+			http.Redirect(w, r, "/?err=Target+folder+not+found", http.StatusSeeOther)
+			return
+		}
+		http.Redirect(w, r, "/?err="+err.Error(), http.StatusSeeOther)
+		return
+	}
+
+	http.Redirect(w, r, "/?msg=File+moved+successfully", http.StatusSeeOther)
+}

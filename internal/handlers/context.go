@@ -75,6 +75,7 @@ func NewBaseHandler(st store.Store, cfg *config.Config, templateFS fs.FS) (*Base
 		"register.html",
 		"dashboard.html",
 		"snippet_new.html",
+		"snippet_edit.html",
 		"snippet_view.html",
 		"share_view.html",
 		"search_results.html",

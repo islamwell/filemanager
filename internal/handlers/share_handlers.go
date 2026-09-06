@@ -235,3 +235,31 @@ func (h *ShareHandler) AudioSharedStream(w http.ResponseWriter, r *http.Request)
 	SetContentDisposition(w, "inline", shareLink.File.OriginalFilename)
 	http.ServeContent(w, r, shareLink.File.OriginalFilename, stat.ModTime(), f)
 }
+
+// ViewSharedMediaInline streams shared images, PDFs, and videos inline with byte-range support.
+func (h *ShareHandler) ViewSharedMediaInline(w http.ResponseWriter, r *http.Request) {
+	token := r.PathValue("token")
+	shareLink, err := h.Store.GetShareLink(token)
+	if err != nil || shareLink.ItemType != models.ItemTypeFile || shareLink.File == nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	f, err := os.Open(shareLink.File.StoredPath)
+	if err != nil {
+		http.Error(w, "File not available on disk", http.StatusGone)
+		return
+	}
+	defer f.Close()
+
+	stat, err := f.Stat()
+	if err != nil {
+		http.Error(w, "Failed to stat file", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", shareLink.File.MimeType)
+	w.Header().Set("Accept-Ranges", "bytes")
+	SetContentDisposition(w, "inline", shareLink.File.OriginalFilename)
+	http.ServeContent(w, r, shareLink.File.OriginalFilename, stat.ModTime(), f)
+}

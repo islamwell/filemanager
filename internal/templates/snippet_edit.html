@@ -1,0 +1,84 @@
+{{template "base" .}}
+
+{{define "content"}}
+<div style="max-width: 800px; margin: 1.5rem auto;">
+  <div class="card-section">
+    <div class="card-title">
+      <span>Edit Text Snippet</span>
+      <span id="charCounter" style="font-size: 0.8rem; font-weight: normal; color: var(--text-muted);">0 / 10,000 characters</span>
+    </div>
+
+    <form action="/snippets/{{.Data.Snippet.ID}}/edit" method="POST">
+      <input type="hidden" name="_csrf" value="{{.CSRFToken}}">
+
+      <div class="form-group">
+        <label class="form-label" for="snippetTitle">Title</label>
+        <input type="text" id="snippetTitle" name="title" class="form-control" placeholder="e.g. Database Connection Config" required autofocus value="{{.Data.Snippet.Title}}">
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+        <div class="form-group">
+          <label class="form-label" for="snippetLang">Syntax / Language</label>
+          <select id="snippetLang" name="language" class="form-control">
+            <option value="text" {{if eq .Data.Snippet.Language "text"}}selected{{end}}>Plain Text</option>
+            <option value="go" {{if eq .Data.Snippet.Language "go"}}selected{{end}}>Go</option>
+            <option value="json" {{if eq .Data.Snippet.Language "json"}}selected{{end}}>JSON</option>
+            <option value="python" {{if eq .Data.Snippet.Language "python"}}selected{{end}}>Python</option>
+            <option value="javascript" {{if eq .Data.Snippet.Language "javascript"}}selected{{end}}>JavaScript</option>
+            <option value="html" {{if eq .Data.Snippet.Language "html"}}selected{{end}}>HTML / XML</option>
+            <option value="css" {{if eq .Data.Snippet.Language "css"}}selected{{end}}>CSS</option>
+            <option value="sql" {{if eq .Data.Snippet.Language "sql"}}selected{{end}}>SQL</option>
+            <option value="markdown" {{if eq .Data.Snippet.Language "markdown"}}selected{{end}}>Markdown</option>
+            <option value="bash" {{if eq .Data.Snippet.Language "bash"}}selected{{end}}>Shell / Bash</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="snippetCat">Folder</label>
+          <select id="snippetCat" name="category_id" class="form-control">
+            <option value="">(Root / No Folder)</option>
+            {{range .Data.Categories}}
+            <option value="{{.ID}}" {{if eq $.Data.Snippet.CategoryIDStr .ID}}selected{{end}}>{{.Path}}</option>
+            {{end}}
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="snippetTags">Tags (comma-separated)</label>
+        <input type="text" id="snippetTags" name="tags" class="form-control" placeholder="e.g. config, staging, credentials" value="{{.Data.TagsString}}">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="snippetContent">Snippet Content (Plain text, max 10,000 runes)</label>
+        <textarea id="snippetContent" name="content" class="form-control" style="min-height: 300px;" maxlength="10000" oninput="updateCharCount(this)" required>{{.Data.Snippet.Content}}</textarea>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem;">
+        <a href="/snippets/{{.Data.Snippet.ID}}" class="btn btn-secondary">Cancel</a>
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function updateCharCount(el) {
+  const count = el.value.length;
+  const counter = document.getElementById('charCounter');
+  if (counter) {
+    counter.textContent = count.toLocaleString() + ' / 10,000 characters';
+    if (count > 9500) {
+      counter.style.color = 'var(--danger)';
+    } else {
+      counter.style.color = 'var(--text-muted)';
+    }
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const textarea = document.getElementById('snippetContent');
+  if (textarea) updateCharCount(textarea);
+});
+</script>
+{{end}}

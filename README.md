@@ -16,16 +16,20 @@ A secure, high-performance, self-contained file and snippet manager web applicat
    - Sharded UUID disk storage paths isolate files and prevent filesystem directory limits.
    - Strict filename sanitization and RFC 5987 UTF-8 `Content-Disposition` headers eliminate path traversal risks.
    - SHA-256 integrity checksums computed on the fly.
-3. **Single-Click MP3 Audio Player**:
-   - Inline playback button and sticky bottom player bar.
-   - Native HTTP byte-range request streaming (`206 Partial Content`, `Accept-Ranges: bytes`) allows instant seek, scrub, and playback in all modern browsers.
-4. **Hierarchical Folders / Collections (Up to 4 Levels Deep)**:
-   - Full nested directory organization: `Root (Level 1) ➔ Folder (Level 2) ➔ Sub-folder (Level 3) ➔ Deepest (Level 4)`.
+3. **In-Browser Media Previews & Streaming**:
+   - Single-click MP3 & audio playback with sticky bottom player bar.
+   - In-browser image lightbox modal for instant full-resolution preview (`PNG`, `JPEG`, `GIF`, `WebP`, `SVG`).
+   - Native HTML5 `<video>` player supporting HTTP byte-range request streaming (`206 Partial Content`, `Accept-Ranges: bytes`) for smooth seeking.
+   - In-browser PDF preview frame without forcing file downloads.
+4. **Hierarchical Folders & Item Organization**:
+   - Full nested directory organization up to 4 levels deep: `Root (Level 1) ➔ Folder (Level 2) ➔ Sub-folder (Level 3) ➔ Deepest (Level 4)`.
+   - Reassign and move any file or text snippet between folders or back to Root with 1 click.
    - Strict server-side depth limit enforcement (5th level insertion is rejected).
    - Breadcrumb navigation paths (e.g. `Work / 2026 / Audio / Podcast`).
-5. **Text Snippets (Up to 10,000 Runes)**:
-   - Fast plain-text / code paste with syntax highlighting indicators.
+5. **Text Snippets & Markdown Rendering**:
+   - Create and edit existing plain-text / code snippets (up to 10,000 runes).
    - Live character counter.
+   - Client-side Markdown preview toggle (renders headings, bold, code blocks, quotes, lists).
    - One-click copy to clipboard.
 6. **Tags & Fuzzy Search**:
    - Tagging on all files and snippets with aggregated tag pills.
@@ -34,11 +38,12 @@ A secure, high-performance, self-contained file and snippet manager web applicat
    - 32-byte cryptographically secure random tokens (`base64url`) or **custom vanity aliases** (e.g. `/share/q3-presentation`, `/share/team-audio`).
    - Configurable expiration (1 hour, 24 hours, 7 days, 30 days, or permanent).
    - Instant owner revocation.
-   - Public view, download, and audio playback without authentication.
+   - Public view, download, audio streaming, and rich media previews without authentication.
    - Automatic access view counter.
-8. **Clipboard Paste & Screenshot Uploads**:
+8. **Clipboard Paste & Drag-and-Drop Uploads**:
+   - Drag and drop files from desktop directly onto the browser window with visual drop target overlay.
    - Press <kbd>Ctrl+V</kbd> / <kbd>Cmd+V</kbd> anywhere to instantly upload pasted screenshots or images from the clipboard.
-   - Paste plain text directly to create new text snippets with live character counting.
+   - Paste plain text directly to create new text snippets.
 9. **Security Hardening**:
    - Double-submit CSRF cookie protection on all state-changing endpoints.
    - Context-aware XSS escaping with Go's `html/template`.
@@ -47,7 +52,7 @@ A secure, high-performance, self-contained file and snippet manager web applicat
     - HTML templates, CSS, and JS are embedded directly into the binary via `embed.FS`.
     - Pure Go SQLite database engine (`modernc.org/sqlite`) requires no C compiler (CGO-free).
 11. **Footer Versioning**:
-    - Displays version and update timestamp (`v1.0.6 (updated 2026-08-25 00:28)`).
+    - Displays version and update timestamp (`v1.0.7 (updated 2026-09-06 22:55)`).
 
 ---
 

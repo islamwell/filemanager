@@ -44,13 +44,16 @@ type Store interface {
 	ListFiles(userID string, categoryID *string, tagFilter string) ([]*models.FileItem, error)
 	DeleteFile(id, userID string) (*models.FileItem, error)
 	GetFileByChecksum(userID, checksum string) (*models.FileItem, error)
+	MoveFile(id, userID string, newCategoryID *string) error
 
 	// Snippets
 	CreateSnippet(snippet *models.Snippet) error
 	GetSnippetByID(id, userID string) (*models.Snippet, error)
 	GetSnippetByIDPublic(id string) (*models.Snippet, error)
 	ListSnippets(userID string, categoryID *string, tagFilter string) ([]*models.Snippet, error)
+	UpdateSnippet(snippet *models.Snippet) error
 	DeleteSnippet(id, userID string) error
+	MoveSnippet(id, userID string, newCategoryID *string) error
 
 	// Tags
 	AssignItemTags(itemID string, itemType models.ItemType, tags []string, userID string) error

@@ -770,6 +770,32 @@ func (s *SQLiteStore) GetFileByChecksum(userID, checksum string) (*models.FileIt
 	return &f, nil
 }
 
+func (s *SQLiteStore) MoveFile(id, userID string, newCategoryID *string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if newCategoryID != nil && *newCategoryID != "" {
+		var exists int
+		err := s.db.QueryRow(`SELECT 1 FROM categories WHERE id = ? AND user_id = ?`, *newCategoryID, userID).Scan(&exists)
+		if err != nil {
+			return ErrCategoryNotFound
+		}
+	} else {
+		newCategoryID = nil
+	}
+
+	res, err := s.db.Exec(`UPDATE files SET category_id = ?, updated_at = ? WHERE id = ? AND user_id = ?`,
+		newCategoryID, time.Now().UTC(), id, userID)
+	if err != nil {
+		return err
+	}
+	affected, _ := res.RowsAffected()
+	if affected == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
 // -------------------------------------------------------------
 // Snippet Operations
 // -------------------------------------------------------------
@@ -962,6 +988,55 @@ func (s *SQLiteStore) DeleteSnippet(id, userID string) error {
 	defer s.mu.Unlock()
 
 	res, err := s.db.Exec(`DELETE FROM snippets WHERE id = ? AND user_id = ?`, id, userID)
+	if err != nil {
+		return err
+	}
+	affected, _ := res.RowsAffected()
+	if affected == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+func (s *SQLiteStore) UpdateSnippet(snippet *models.Snippet) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	snippet.UpdatedAt = time.Now().UTC()
+	var categoryIDVal interface{}
+	if snippet.CategoryID != nil && *snippet.CategoryID != "" {
+		categoryIDVal = *snippet.CategoryID
+	}
+
+	res, err := s.db.Exec(`UPDATE snippets SET title = ?, content = ?, language = ?, category_id = ?, updated_at = ? WHERE id = ? AND user_id = ?`,
+		snippet.Title, snippet.Content, snippet.Language, categoryIDVal, snippet.UpdatedAt, snippet.ID, snippet.UserID)
+	if err != nil {
+		return err
+	}
+	affected, _ := res.RowsAffected()
+	if affected == 0 {
+		return ErrNotFound
+	}
+
+	return s.assignItemTagsInternal(snippet.ID, models.ItemTypeSnippet, snippet.Tags, snippet.UserID)
+}
+
+func (s *SQLiteStore) MoveSnippet(id, userID string, newCategoryID *string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if newCategoryID != nil && *newCategoryID != "" {
+		var exists int
+		err := s.db.QueryRow(`SELECT 1 FROM categories WHERE id = ? AND user_id = ?`, *newCategoryID, userID).Scan(&exists)
+		if err != nil {
+			return ErrCategoryNotFound
+		}
+	} else {
+		newCategoryID = nil
+	}
+
+	res, err := s.db.Exec(`UPDATE snippets SET category_id = ?, updated_at = ? WHERE id = ? AND user_id = ?`,
+		newCategoryID, time.Now().UTC(), id, userID)
 	if err != nil {
 		return err
 	}

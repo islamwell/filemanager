@@ -102,12 +102,33 @@
           <tr>
             <td>
               <div class="item-name-cell">
-                {{if .IsMP3}}
-                <button type="button" class="play-btn" onclick="playAudio('/files/{{.ID}}/audio', '{{.OriginalFilename}}')" title="Play MP3">
+                {{if or .IsMP3 .IsAudio}}
+                <button type="button" class="play-btn" onclick="playAudio('/files/{{.ID}}/audio', '{{.OriginalFilename}}')" title="Play Audio">
                   ▶ Play
                 </button>
                 <svg class="item-icon mp3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"></path>
+                </svg>
+                {{else if .IsImage}}
+                <button type="button" class="play-btn" style="background:#e0e7ff; color:#4338ca; border-color:#c7d2fe;" onclick="openMediaPreview('/files/{{.ID}}/view', '{{.OriginalFilename}}', '{{.MimeType}}')" title="Preview Image">
+                  👁 View
+                </button>
+                <svg class="item-icon" fill="none" stroke="#4338ca" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                </svg>
+                {{else if .IsVideo}}
+                <button type="button" class="play-btn" style="background:#fef3c7; color:#b45309; border-color:#fde68a;" onclick="openMediaPreview('/files/{{.ID}}/view', '{{.OriginalFilename}}', '{{.MimeType}}')" title="Play Video">
+                  ▶ Play
+                </button>
+                <svg class="item-icon" fill="none" stroke="#b45309" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                </svg>
+                {{else if .IsPDF}}
+                <button type="button" class="play-btn" style="background:#fee2e2; color:#b91c1c; border-color:#fecaca;" onclick="openMediaPreview('/files/{{.ID}}/view', '{{.OriginalFilename}}', '{{.MimeType}}')" title="View PDF">
+                  📄 View
+                </button>
+                <svg class="item-icon" fill="none" stroke="#b91c1c" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
                 </svg>
                 {{else}}
                 <svg class="item-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -135,6 +156,14 @@
             <td style="font-size: 0.8rem; color: var(--text-muted);">{{formatDate .CreatedAt}}</td>
             <td>
               <div class="actions-cell">
+                {{if or .IsImage .IsVideo .IsPDF}}
+                <button type="button" class="btn btn-secondary btn-sm" onclick="openMediaPreview('/files/{{.ID}}/view', '{{.OriginalFilename}}', '{{.MimeType}}')" title="Preview">
+                  👁 View
+                </button>
+                {{end}}
+                <button type="button" class="btn btn-secondary btn-sm" onclick="openMoveModal('{{.ID}}', 'file', '{{if .CategoryID}}{{.CategoryID}}{{end}}', '{{.OriginalFilename}}')" title="Move to Folder">
+                  📁 Move
+                </button>
                 <button type="button" class="btn btn-secondary btn-sm" onclick="openShareModal('{{.ID}}', 'file', '{{if .ShareToken}}{{.ShareToken}}{{end}}')" title="Share">
                   🔗 Share
                 </button>
@@ -210,6 +239,12 @@
             <td style="font-size: 0.8rem; color: var(--text-muted);">{{formatDate .CreatedAt}}</td>
             <td>
               <div class="actions-cell">
+                <a href="/snippets/{{.ID}}/edit" class="btn btn-secondary btn-sm" title="Edit Snippet">
+                  ✏️ Edit
+                </a>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="openMoveModal('{{.ID}}', 'snippet', '{{if .CategoryID}}{{.CategoryID}}{{end}}', '{{.Title}}')" title="Move to Folder">
+                  📁 Move
+                </button>
                 <button type="button" class="btn btn-secondary btn-sm" onclick="openShareModal('{{.ID}}', 'snippet', '{{if .ShareToken}}{{.ShareToken}}{{end}}')" title="Share">
                   🔗 Share
                 </button>
@@ -402,4 +437,54 @@
     </div>
   </form>
 </dialog>
+
+<!-- Move Item Modal -->
+<dialog id="moveModal">
+  <div class="dialog-header">
+    <h3 class="dialog-title" id="moveModalTitle">📁 Move Item</h3>
+    <button onclick="closeDialog('moveModal')" class="dialog-close">&times;</button>
+  </div>
+  <form id="moveItemForm" method="POST">
+    <input type="hidden" name="_csrf" value="{{.CSRFToken}}">
+    <p id="moveItemDesc" style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;"></p>
+    <div class="form-group">
+      <label class="form-label" for="moveTargetCat">Destination Folder</label>
+      <select id="moveTargetCat" name="category_id" class="form-control">
+        <option value="">(Root / No Folder)</option>
+        {{range .Data.Categories}}
+        <option value="{{.ID}}">{{.Path}}</option>
+        {{end}}
+      </select>
+    </div>
+    <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1.5rem;">
+      <button type="button" onclick="closeDialog('moveModal')" class="btn btn-secondary">Cancel</button>
+      <button type="submit" class="btn btn-primary">Move Here</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- In-Browser Media Lightbox Modal (Images, PDFs, Videos) -->
+<dialog id="mediaPreviewModal" style="max-width: 900px; width: 95%;">
+  <div class="dialog-header">
+    <h3 class="dialog-title" id="mediaPreviewTitle">Preview</h3>
+    <div style="display: flex; gap: 0.5rem; align-items: center;">
+      <a id="mediaDownloadBtn" href="" class="btn btn-secondary btn-sm" download>⬇ Download</a>
+      <button onclick="closeMediaPreview()" class="dialog-close">&times;</button>
+    </div>
+  </div>
+  <div id="mediaPreviewBody" style="text-align: center; max-height: 75vh; overflow: auto; padding: 0.5rem; background: var(--bg); border-radius: 8px;">
+    <!-- Rendered dynamically -->
+  </div>
+</dialog>
+
+<!-- Drag and Drop Overlay -->
+<div id="dropOverlay" class="drop-overlay" style="display: none;">
+  <div class="drop-overlay-box">
+    <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+    </svg>
+    <h3 style="margin-top: 0.5rem; color: var(--primary);">Drop file here to upload</h3>
+    <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.25rem;">Release to open the upload dialogue</p>
+  </div>
+</div>
 {{end}}
