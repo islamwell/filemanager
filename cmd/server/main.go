@@ -67,11 +67,20 @@ func main() {
 	// Static Assets
 	mux.Handle("GET /static/", http.FileServer(http.FS(static.FS)))
 
-	// Public Auth & Share Routes
+	// In-memory rate limiter for authentication routes (15 attempts/minute/IP)
+	authLimiter := middleware.NewRateLimiter(15, 1*time.Minute)
+
+	// Health Check Route (Uptime monitors, Docker, Plesk healthchecks)
+	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprintf(w, `{"status":"ok","version":"%s","time":"%s"}`+"\n", services.Version, time.Now().UTC().Format(time.RFC3339))
+	})
+
+	// Public Auth Routes
 	mux.HandleFunc("GET /login", authHandler.LoginView)
-	mux.HandleFunc("POST /login", authHandler.LoginSubmit)
+	mux.Handle("POST /login", middleware.RateLimitMiddleware(authLimiter)(http.HandlerFunc(authHandler.LoginSubmit)))
 	mux.HandleFunc("GET /register", authHandler.RegisterView)
-	mux.HandleFunc("POST /register", authHandler.RegisterSubmit)
+	mux.Handle("POST /register", middleware.RateLimitMiddleware(authLimiter)(http.HandlerFunc(authHandler.RegisterSubmit)))
 	mux.HandleFunc("POST /logout", authHandler.Logout)
 
 	// Public Sharing Routes (No authentication required)

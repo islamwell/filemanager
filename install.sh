@@ -338,19 +338,19 @@ run_health_check() {
         return 0
     fi
 
-    log_info "Running live health check on http://127.0.0.1:${PORT}/login..."
+    log_info "Running live health check on http://127.0.0.1:${PORT}/healthz..."
     local max_attempts=15
     local attempt=1
     local is_healthy=false
 
     while [[ ${attempt} -le ${max_attempts} ]]; do
         if command -v curl &>/dev/null; then
-            if curl -s -f -o /dev/null --connect-timeout 2 "http://127.0.0.1:${PORT}/login"; then
+            if curl -s -f -o /dev/null --connect-timeout 2 "http://127.0.0.1:${PORT}/healthz" || curl -s -f -o /dev/null --connect-timeout 2 "http://127.0.0.1:${PORT}/login"; then
                 is_healthy=true
                 break
             fi
         elif command -v wget &>/dev/null; then
-            if wget -q --spider --timeout=2 "http://127.0.0.1:${PORT}/login"; then
+            if wget -q --spider --timeout=2 "http://127.0.0.1:${PORT}/healthz" || wget -q --spider --timeout=2 "http://127.0.0.1:${PORT}/login"; then
                 is_healthy=true
                 break
             fi

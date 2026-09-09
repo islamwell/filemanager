@@ -4,8 +4,10 @@ import (
 	"context"
 	"crypto/subtle"
 	"log"
+	"net"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"filemanager/internal/auth"
@@ -156,4 +158,99 @@ func MaxBodySize(maxBytes int64) func(http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+// RateLimiter implements a lightweight thread-safe sliding window rate limiter per client IP.
+type RateLimiter struct {
+	mu       sync.Mutex
+	attempts map[string][]time.Time
+	limit    int
+	window   time.Duration
+}
+
+// NewRateLimiter creates a new rate limiter with the specified request count limit and sliding window duration.
+func NewRateLimiter(limit int, window time.Duration) *RateLimiter {
+	rl := &RateLimiter{
+		attempts: make(map[string][]time.Time),
+		limit:    limit,
+		window:   window,
+	}
+
+	// Background ticker to prune inactive IP addresses and prevent unbounded memory growth
+	go func() {
+		ticker := time.NewTicker(2 * time.Minute)
+		for range ticker.C {
+			rl.mu.Lock()
+			now := time.Now()
+			for ip, times := range rl.attempts {
+				var active []time.Time
+				for _, t := range times {
+					if now.Sub(t) < rl.window {
+						active = append(active, t)
+					}
+				}
+				if len(active) == 0 {
+					delete(rl.attempts, ip)
+				} else {
+					rl.attempts[ip] = active
+				}
+			}
+			rl.mu.Unlock()
+		}
+	}()
+
+	return rl
+}
+
+// Allow returns true if the client IP is within rate limits.
+func (rl *RateLimiter) Allow(ip string) bool {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+
+	now := time.Now()
+	times := rl.attempts[ip]
+	var active []time.Time
+	for _, t := range times {
+		if now.Sub(t) < rl.window {
+			active = append(active, t)
+		}
+	}
+
+	if len(active) >= rl.limit {
+		rl.attempts[ip] = active
+		return false
+	}
+
+	rl.attempts[ip] = append(active, now)
+	return true
+}
+
+// RateLimitMiddleware blocks clients exceeding the allowed request threshold.
+func RateLimitMiddleware(rl *RateLimiter) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ip := getClientIP(r)
+			if !rl.Allow(ip) {
+				http.Error(w, "Too many requests. Please wait a moment before trying again.", http.StatusTooManyRequests)
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// getClientIP extracts client IP addressing proxy headers (X-Forwarded-For, X-Real-IP) and RemoteAddr.
+func getClientIP(r *http.Request) string {
+	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+		parts := strings.Split(xff, ",")
+		return strings.TrimSpace(parts[0])
+	}
+	if xri := r.Header.Get("X-Real-IP"); xri != "" {
+		return strings.TrimSpace(xri)
+	}
+	ip, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return r.RemoteAddr
+	}
+	return ip
 }

@@ -476,7 +476,7 @@ verify_installation() {
         check_host="127.0.0.1"
     fi
 
-    local health_url="http://${check_host}:${PORT}/login"
+    local health_url="http://${check_host}:${PORT}/healthz"
     local max_attempts=15
     local attempt=1
     local is_healthy=false

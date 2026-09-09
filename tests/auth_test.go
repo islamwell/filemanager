@@ -11,6 +11,7 @@ import (
 	"filemanager/internal/auth"
 	"filemanager/internal/config"
 	"filemanager/internal/handlers"
+	"filemanager/internal/middleware"
 	"filemanager/internal/models"
 	"filemanager/internal/store"
 	"filemanager/internal/templates"
@@ -153,5 +154,34 @@ func TestSessionExpiration(t *testing.T) {
 	_, err := st.GetSession("expired_token_123")
 	if err == nil {
 		t.Errorf("expected error fetching expired session, got nil")
+	}
+}
+
+func TestAuthRateLimiter(t *testing.T) {
+	rl := middleware.NewRateLimiter(3, 500*time.Millisecond)
+
+	ip := "192.168.1.100"
+	if !rl.Allow(ip) {
+		t.Errorf("expected 1st attempt to be allowed")
+	}
+	if !rl.Allow(ip) {
+		t.Errorf("expected 2nd attempt to be allowed")
+	}
+	if !rl.Allow(ip) {
+		t.Errorf("expected 3rd attempt to be allowed")
+	}
+	if rl.Allow(ip) {
+		t.Errorf("expected 4th attempt to be blocked")
+	}
+
+	// Another IP should not be blocked
+	if !rl.Allow("192.168.1.101") {
+		t.Errorf("expected different IP to be allowed")
+	}
+
+	// Wait for window to expire
+	time.Sleep(550 * time.Millisecond)
+	if !rl.Allow(ip) {
+		t.Errorf("expected attempt to be allowed after window expires")
 	}
 }

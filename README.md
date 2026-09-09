@@ -45,14 +45,15 @@ A secure, high-performance, self-contained file and snippet manager web applicat
    - Press <kbd>Ctrl+V</kbd> / <kbd>Cmd+V</kbd> anywhere to instantly upload pasted screenshots or images from the clipboard.
    - Paste plain text directly to create new text snippets.
 9. **Security Hardening**:
+   - In-memory sliding window IP rate limiting on `/login` and `/register` to stop brute-force attacks and prevent bcrypt CPU exhaustion.
    - Double-submit CSRF cookie protection on all state-changing endpoints.
    - Context-aware XSS escaping with Go's `html/template`.
    - Strict HTTP security headers (`Content-Security-Policy`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy`).
-10. **Zero External Runtime Dependencies**:
-    - HTML templates, CSS, and JS are embedded directly into the binary via `embed.FS`.
-    - Pure Go SQLite database engine (`modernc.org/sqlite`) requires no C compiler (CGO-free).
+10. **Operations & Monitoring**:
+    - Unauthenticated `/healthz` endpoint returning JSON health status, version, and server timestamp.
+    - Zero external runtime dependencies (HTML, CSS, JS embedded via `embed.FS`; pure Go SQLite).
 11. **Footer Versioning**:
-    - Displays version and update timestamp (`v1.0.7 (updated 2026-09-06 22:55)`).
+    - Displays version and update timestamp (`v1.0.8 (updated 2026-09-09 21:02)`).
 
 ---
 

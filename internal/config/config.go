@@ -2,9 +2,12 @@ package config
 
 import (
 	"flag"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
+
+	"filemanager/internal/services"
 )
 
 // Config encapsulates runtime configuration parameters for the file manager server.
@@ -27,7 +30,7 @@ func LoadConfig() *Config {
 		DatabasePath: "./data/filemanager.db",
 		MaxFileSize:  100 * 1024 * 1024, // 100 MB default
 		SecureCookie: false,             // Set to true behind production HTTPS
-		AppVersion:   "v1.0.7",
+		AppVersion:   "v1.0.8",
 	}
 
 	// Environment variable overrides
@@ -60,8 +63,15 @@ func LoadConfig() *Config {
 	flag.StringVar(&cfg.StorageDir, "storage", cfg.StorageDir, "Directory path for physical file storage")
 	flag.StringVar(&cfg.DatabasePath, "db", cfg.DatabasePath, "Path to SQLite database file")
 	flag.Int64Var(&cfg.MaxFileSize, "max-file-size", cfg.MaxFileSize, "Maximum file upload size in bytes")
-	flag.BoolVar(&cfg.SecureCookie, "secure-cookie", cfg.SecureCookie, "Require HTTPS for session cookies")
+	var showVersion bool
+	flag.BoolVar(&showVersion, "version", false, "Print application version and exit")
+	flag.BoolVar(&showVersion, "v", false, "Print application version and exit")
 	flag.Parse()
+
+	if showVersion {
+		fmt.Println(services.GetFooterVersion())
+		os.Exit(0)
+	}
 
 	// Ensure directories exist
 	dbDir := filepath.Dir(cfg.DatabasePath)
