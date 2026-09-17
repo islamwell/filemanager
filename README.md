@@ -53,7 +53,7 @@ A secure, high-performance, self-contained file and snippet manager web applicat
     - Unauthenticated `/healthz` endpoint returning JSON health status, version, and server timestamp.
     - Zero external runtime dependencies (HTML, CSS, JS embedded via `embed.FS`; pure Go SQLite).
 11. **Footer Versioning**:
-    - Displays version and update timestamp (`v1.0.8 (updated 2026-09-09 21:02)`).
+    - Displays version and update timestamp (`v1.0.9 (updated 2026-09-17 20:48)`).
 
 ---
 
@@ -164,29 +164,49 @@ go test -v -race ./...
 
 Because the application is written with pure-Go SQLite (`modernc.org/sqlite`) and embeds all templates/static assets via `embed.FS`, the entire application compiles into a single, self-contained binary with **zero external runtime dependencies**.
 
-### ⚡ Method 1: All-In-One Interactive Wizard & Menu (`install.sh`)
+### ⚡ Method 1: Self-Contained Node.js Installer & Menu (`install.js`)
 
-A single all-in-one executable installer script is included at the root of the repository (`install.sh`). It includes an interactive terminal menu, a guided step-by-step wizard, express presets, Plesk reverse-proxy configuration, live backup creation, and service management:
+A zero-npm-dependency Node.js installer and management suite is included at the root of the repository (`install.js`). It provides a menu-driven terminal interface, step-by-step wizard, express presets, Plesk reverse-proxy configuration, pre-flight diagnostics, live backups, and service management using purely native Node.js core modules:
 
 ```bash
 # 1. Launch Interactive Menu & Wizard
-sudo ./install.sh
+sudo node install.js
 
-# 2. Or run directly with presets:
-sudo ./install.sh --wizard     # Step-by-step interactive questionnaire
-sudo ./install.sh --express    # 1-Click install with standard production defaults
-sudo ./install.sh --plesk      # 1-Click install configured for Plesk (127.0.0.1:8080 HTTPS)
-sudo ./install.sh --status     # View live systemd status & journalctl logs
-sudo ./install.sh --backup     # Take compressed live archive of DB and storage
-sudo ./install.sh --uninstall  # Clean uninstallation
+# 2. Or run directly with flags:
+sudo node install.js --wizard       # Step-by-step guided questionnaire
+sudo node install.js --express      # 1-Click install with standard production defaults
+sudo node install.js --plesk        # 1-Click install configured for Plesk (127.0.0.1:8080 HTTPS)
+node install.js --diagnostics       # Pre-flight check (OS, RAM, disk space, ports, Go, systemd)
+sudo node install.js --status       # View live systemd status & journalctl logs
+sudo node install.js --backup       # Take compressed live archive of DB and storage
+sudo node install.js --uninstall    # Clean uninstallation
 
-# 3. Or pass custom parameters:
-sudo ./install.sh --port 9000 --host 127.0.0.1 --max-size-mb 200 --secure-cookie true
+# 3. Custom parameters & dry-run:
+sudo node install.js --port 9000 --host 127.0.0.1 --max-size-mb 200 --secure-cookie true
+node install.js --dry-run --express # Preview installation steps without modifying system
 ```
 
 ---
 
-### 🛠️ Method 2: Manual Step-by-Step Installation
+### 🐧 Method 2: Shell Installer & Menu (`install.sh`)
+
+Alternatively, an all-in-one Bash script is provided:
+
+```bash
+# Launch Interactive Menu & Wizard
+sudo ./install.sh
+
+# Presets
+sudo ./install.sh --wizard     # Guided questionnaire
+sudo ./install.sh --express    # 1-Click standard install
+sudo ./install.sh --plesk      # Plesk reverse-proxy preset
+sudo ./install.sh --backup     # Backup DB and files
+sudo ./install.sh --uninstall  # Clean uninstallation
+```
+
+---
+
+### 🛠️ Method 3: Manual Step-by-Step Installation
 
 #### Step 1: Building the Binary for Linux
 
