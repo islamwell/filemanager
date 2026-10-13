@@ -20,7 +20,7 @@ const crypto = require('crypto');
 // Default Configuration & Application Metadata
 // ------------------------------------------------------------------------------
 const APP_NAME = 'filemanager';
-const APP_VERSION = 'v1.0.12';
+const APP_VERSION = 'v1.0.13';
 const DEFAULT_PORT = 8080;
 const DEFAULT_HOST = '0.0.0.0';
 const DEFAULT_DATA_DIR = '/var/lib/filemanager';
@@ -482,17 +482,15 @@ function setupUserAndStorage(dataDir, configDir, backupDir, user, group) {
 
   if (isLinux()) {
     // Check group
-    try {
-      run('getent', ['group', group]);
-    } catch {
+    const grpCheck = run('getent', ['group', group]);
+    if (grpCheck.status !== 0) {
       log.info(`Creating system group '${group}'...`);
       run('groupadd', ['--system', group]);
     }
 
     // Check user
-    try {
-      run('getent', ['passwd', user]);
-    } catch {
+    const usrCheck = run('getent', ['passwd', user]);
+    if (usrCheck.status !== 0) {
       log.info(`Creating system user '${user}'...`);
       const shell = fs.existsSync('/usr/sbin/nologin') ? '/usr/sbin/nologin' : '/bin/false';
       run('useradd', [
@@ -1095,11 +1093,11 @@ async function performUninstall() {
   }
 
   if (isLinux()) {
-    try {
-      run('getent', ['passwd', SYSTEM_USER]);
+    const usrCheck = run('getent', ['passwd', SYSTEM_USER]);
+    if (usrCheck.status === 0) {
       log.info(`Removing system user '${SYSTEM_USER}'...`);
       run('userdel', [SYSTEM_USER]);
-    } catch {}
+    }
   }
 
   log.success('Uninstallation complete.');
