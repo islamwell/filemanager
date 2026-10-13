@@ -128,6 +128,8 @@ func (s *SQLiteStore) initSchema() error {
 		user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
 		item_id TEXT NOT NULL,
 		item_type TEXT NOT NULL CHECK(item_type IN ('file', 'snippet')),
+		password_hash TEXT NOT NULL DEFAULT '',
+		max_views INTEGER NOT NULL DEFAULT 0,
 		expires_at DATETIME,
 		view_count INTEGER NOT NULL DEFAULT 0,
 		created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -141,8 +143,15 @@ func (s *SQLiteStore) initSchema() error {
 	CREATE INDEX IF NOT EXISTS idx_item_tags ON item_tags(tag_id, item_type);
 	CREATE INDEX IF NOT EXISTS idx_share_links_token ON share_links(token);
 	`
-	_, err := s.db.Exec(schema)
-	return err
+	if _, err := s.db.Exec(schema); err != nil {
+		return err
+	}
+
+	// Safe backward-compatible schema migrations for existing SQLite databases
+	_, _ = s.db.Exec(`ALTER TABLE share_links ADD COLUMN password_hash TEXT NOT NULL DEFAULT ''`)
+	_, _ = s.db.Exec(`ALTER TABLE share_links ADD COLUMN max_views INTEGER NOT NULL DEFAULT 0`)
+
+	return nil
 }
 
 // -------------------------------------------------------------
@@ -796,6 +805,137 @@ func (s *SQLiteStore) MoveFile(id, userID string, newCategoryID *string) error {
 	return nil
 }
 
+func (s *SQLiteStore) RenameFile(id, userID, newFilename string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	newFilename = strings.TrimSpace(newFilename)
+	if newFilename == "" {
+		return errors.New("filename cannot be empty")
+	}
+
+	ext := strings.ToLower(filepath.Ext(newFilename))
+	isMP3 := ext == ".mp3"
+
+	res, err := s.db.Exec(`UPDATE files SET original_filename = ?, is_mp3 = ?, updated_at = ? WHERE id = ? AND user_id = ?`,
+		newFilename, isMP3, time.Now().UTC(), id, userID)
+	if err != nil {
+		return err
+	}
+	affected, _ := res.RowsAffected()
+	if affected == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+func (s *SQLiteStore) getFilesByIDsInternal(ids []string, userID string) ([]*models.FileItem, error) {
+	if len(ids) == 0 {
+		return []*models.FileItem{}, nil
+	}
+
+	placeholders := make([]string, len(ids))
+	args := make([]interface{}, len(ids)+1)
+	args[0] = userID
+	for i, id := range ids {
+		placeholders[i] = "?"
+		args[i+1] = id
+	}
+
+	query := fmt.Sprintf(`
+	SELECT f.id, f.user_id, f.category_id, f.original_filename, f.stored_path, f.file_size, f.mime_type, f.sha256_checksum, f.is_mp3, f.created_at, f.updated_at
+	FROM files f
+	WHERE f.user_id = ? AND f.id IN (%s)
+	ORDER BY f.created_at DESC`, strings.Join(placeholders, ","))
+
+	rows, err := s.db.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var files []*models.FileItem
+	for rows.Next() {
+		var f models.FileItem
+		var catID sql.NullString
+		if err := rows.Scan(&f.ID, &f.UserID, &catID, &f.OriginalFilename, &f.StoredPath, &f.FileSize, &f.MimeType, &f.Sha256Checksum, &f.IsMP3, &f.CreatedAt, &f.UpdatedAt); err != nil {
+			return nil, err
+		}
+		if catID.Valid {
+			f.CategoryID = &catID.String
+		}
+		files = append(files, &f)
+	}
+	return files, nil
+}
+
+func (s *SQLiteStore) GetFilesByIDs(ids []string, userID string) ([]*models.FileItem, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.getFilesByIDsInternal(ids, userID)
+}
+
+func (s *SQLiteStore) DeleteFiles(ids []string, userID string) ([]*models.FileItem, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if len(ids) == 0 {
+		return nil, nil
+	}
+
+	files, err := s.getFilesByIDsInternal(ids, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	placeholders := make([]string, len(ids))
+	args := make([]interface{}, len(ids)+1)
+	args[0] = userID
+	for i, id := range ids {
+		placeholders[i] = "?"
+		args[i+1] = id
+	}
+
+	query := fmt.Sprintf(`DELETE FROM files WHERE user_id = ? AND id IN (%s)`, strings.Join(placeholders, ","))
+	_, err = s.db.Exec(query, args...)
+	if err != nil {
+		return nil, err
+	}
+
+	return files, nil
+}
+
+func (s *SQLiteStore) MoveFiles(ids []string, userID string, newCategoryID *string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if len(ids) == 0 {
+		return nil
+	}
+
+	if newCategoryID != nil && *newCategoryID != "" {
+		var exists int
+		err := s.db.QueryRow(`SELECT 1 FROM categories WHERE id = ? AND user_id = ?`, *newCategoryID, userID).Scan(&exists)
+		if err != nil {
+			return ErrCategoryNotFound
+		}
+	} else {
+		newCategoryID = nil
+	}
+
+	placeholders := make([]string, len(ids))
+	args := make([]interface{}, 0, len(ids)+3)
+	args = append(args, newCategoryID, time.Now().UTC(), userID)
+	for i, id := range ids {
+		placeholders[i] = "?"
+		args = append(args, id)
+	}
+
+	query := fmt.Sprintf(`UPDATE files SET category_id = ?, updated_at = ? WHERE user_id = ? AND id IN (%s)`, strings.Join(placeholders, ","))
+	_, err := s.db.Exec(query, args...)
+	return err
+}
+
 // -------------------------------------------------------------
 // Snippet Operations
 // -------------------------------------------------------------
@@ -1047,6 +1187,48 @@ func (s *SQLiteStore) MoveSnippet(id, userID string, newCategoryID *string) erro
 	return nil
 }
 
+func (s *SQLiteStore) RenameSnippet(id, userID, newTitle string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	newTitle = strings.TrimSpace(newTitle)
+	if newTitle == "" {
+		return errors.New("title cannot be empty")
+	}
+
+	res, err := s.db.Exec(`UPDATE snippets SET title = ?, updated_at = ? WHERE id = ? AND user_id = ?`,
+		newTitle, time.Now().UTC(), id, userID)
+	if err != nil {
+		return err
+	}
+	affected, _ := res.RowsAffected()
+	if affected == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+func (s *SQLiteStore) DeleteSnippets(ids []string, userID string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if len(ids) == 0 {
+		return nil
+	}
+
+	placeholders := make([]string, len(ids))
+	args := make([]interface{}, len(ids)+1)
+	args[0] = userID
+	for i, id := range ids {
+		placeholders[i] = "?"
+		args[i+1] = id
+	}
+
+	query := fmt.Sprintf(`DELETE FROM snippets WHERE user_id = ? AND id IN (%s)`, strings.Join(placeholders, ","))
+	_, err := s.db.Exec(query, args...)
+	return err
+}
+
 // -------------------------------------------------------------
 // Share Link Operations
 // -------------------------------------------------------------
@@ -1058,8 +1240,8 @@ func (s *SQLiteStore) CreateShareLink(link *models.ShareLink) error {
 	link.CreatedAt = time.Now().UTC()
 	_, _ = s.db.Exec(`DELETE FROM share_links WHERE user_id = ? AND item_id = ? AND item_type = ?`, link.UserID, link.ItemID, link.ItemType)
 
-	query := `INSERT INTO share_links (token, user_id, item_id, item_type, expires_at, view_count, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`
-	_, err := s.db.Exec(query, link.Token, link.UserID, link.ItemID, link.ItemType, link.ExpiresAt, link.ViewCount, link.CreatedAt)
+	query := `INSERT INTO share_links (token, user_id, item_id, item_type, password_hash, max_views, expires_at, view_count, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+	_, err := s.db.Exec(query, link.Token, link.UserID, link.ItemID, link.ItemType, link.PasswordHash, link.MaxViews, link.ExpiresAt, link.ViewCount, link.CreatedAt)
 	return err
 }
 
@@ -1067,14 +1249,14 @@ func (s *SQLiteStore) GetShareLink(token string) (*models.ShareLink, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	query := `SELECT token, user_id, item_id, item_type, expires_at, view_count, created_at FROM share_links WHERE token = ?`
+	query := `SELECT token, user_id, item_id, item_type, password_hash, max_views, expires_at, view_count, created_at FROM share_links WHERE token = ?`
 	row := s.db.QueryRow(query, token)
 
 	var sl models.ShareLink
 	var expiresAt sql.NullTime
 	var itemTypeStr string
 
-	err := row.Scan(&sl.Token, &sl.UserID, &sl.ItemID, &itemTypeStr, &expiresAt, &sl.ViewCount, &sl.CreatedAt)
+	err := row.Scan(&sl.Token, &sl.UserID, &sl.ItemID, &itemTypeStr, &sl.PasswordHash, &sl.MaxViews, &expiresAt, &sl.ViewCount, &sl.CreatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -1133,14 +1315,14 @@ func (s *SQLiteStore) GetShareLinkByItem(itemID string, itemType models.ItemType
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	query := `SELECT token, user_id, item_id, item_type, expires_at, view_count, created_at FROM share_links WHERE item_id = ? AND item_type = ? AND user_id = ?`
+	query := `SELECT token, user_id, item_id, item_type, password_hash, max_views, expires_at, view_count, created_at FROM share_links WHERE item_id = ? AND item_type = ? AND user_id = ?`
 	row := s.db.QueryRow(query, itemID, itemType, userID)
 
 	var sl models.ShareLink
 	var expiresAt sql.NullTime
 	var itemTypeStr string
 
-	err := row.Scan(&sl.Token, &sl.UserID, &sl.ItemID, &itemTypeStr, &expiresAt, &sl.ViewCount, &sl.CreatedAt)
+	err := row.Scan(&sl.Token, &sl.UserID, &sl.ItemID, &itemTypeStr, &sl.PasswordHash, &sl.MaxViews, &expiresAt, &sl.ViewCount, &sl.CreatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -1280,3 +1462,51 @@ func (s *SQLiteStore) SearchItems(userID, query string, tagFilter string) ([]mod
 
 	return results, nil
 }
+
+// -------------------------------------------------------------
+// Storage Analytics Implementation
+// -------------------------------------------------------------
+
+func (s *SQLiteStore) GetUserStorageStats(userID string) (*models.StorageStats, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	stats := &models.StorageStats{}
+
+	rows, err := s.db.Query(`SELECT original_filename, mime_type, file_size FROM files WHERE user_id = ?`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var filename, mime string
+		var size int64
+		if err := rows.Scan(&filename, &mime, &size); err != nil {
+			return nil, err
+		}
+		stats.FileCount++
+		stats.TotalBytes += size
+
+		mime = strings.ToLower(mime)
+		ext := strings.ToLower(filepath.Ext(filename))
+
+		switch {
+		case strings.HasPrefix(mime, "image/") || ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".gif" || ext == ".svg" || ext == ".webp":
+			stats.ImageBytes += size
+		case strings.HasPrefix(mime, "audio/") || ext == ".mp3" || ext == ".wav" || ext == ".ogg" || ext == ".m4a" || ext == ".flac":
+			stats.AudioBytes += size
+		case strings.HasPrefix(mime, "video/") || ext == ".mp4" || ext == ".mov" || ext == ".webm" || ext == ".mkv":
+			stats.VideoBytes += size
+		case strings.HasPrefix(mime, "text/") || strings.Contains(mime, "pdf") || ext == ".pdf" || ext == ".txt" || ext == ".doc" || ext == ".docx" || ext == ".md":
+			stats.DocBytes += size
+		default:
+			stats.OtherBytes += size
+		}
+	}
+
+	_ = s.db.QueryRow(`SELECT COUNT(*) FROM snippets WHERE user_id = ?`, userID).Scan(&stats.SnippetCount)
+
+	return stats, nil
+}
+

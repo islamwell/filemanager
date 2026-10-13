@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -105,12 +106,30 @@ func (h *ShareHandler) CreateShareLink(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	password := strings.TrimSpace(r.FormValue("password"))
+	var passwordHash string
+	if password != "" {
+		hash, err := auth.HashSharePassword(password)
+		if err != nil {
+			http.Redirect(w, r, "/?err=Failed+to+hash+share+password", http.StatusSeeOther)
+			return
+		}
+		passwordHash = hash
+	}
+
+	maxViews, _ := strconv.Atoi(strings.TrimSpace(r.FormValue("max_views")))
+	if maxViews < 0 {
+		maxViews = 0
+	}
+
 	link := &models.ShareLink{
-		Token:     token,
-		UserID:    user.ID,
-		ItemID:    itemID,
-		ItemType:  itemType,
-		ExpiresAt: expiresAt,
+		Token:        token,
+		UserID:       user.ID,
+		ItemID:       itemID,
+		ItemType:     itemType,
+		PasswordHash: passwordHash,
+		MaxViews:     maxViews,
+		ExpiresAt:    expiresAt,
 	}
 
 	if err := h.Store.CreateShareLink(link); err != nil {
@@ -156,6 +175,11 @@ func safeRedirectURL(raw, host string) string {
 	return "/"
 }
 
+func isShareUnlocked(r *http.Request, token string) bool {
+	cookie, err := r.Cookie("unlock_" + token)
+	return err == nil && cookie.Value == "1"
+}
+
 // ViewSharedItem provides unauthenticated public access to a shared file or snippet.
 func (h *ShareHandler) ViewSharedItem(w http.ResponseWriter, r *http.Request) {
 	token := r.PathValue("token")
@@ -171,7 +195,22 @@ func (h *ShareHandler) ViewSharedItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Increment view count asynchronously/safely
+	if shareLink.IsExhausted() {
+		h.Render(w, r, "share_view.html", "Link Expired - File Manager", map[string]interface{}{
+			"Exhausted": true,
+		}, "This share link has reached its maximum view limit.", "")
+		return
+	}
+
+	if shareLink.HasPassword() && !isShareUnlocked(r, token) {
+		h.Render(w, r, "share_view.html", "Protected Link - File Manager", map[string]interface{}{
+			"PasswordRequired": true,
+			"Token":            token,
+		}, "", "")
+		return
+	}
+
+	// Increment view count
 	_ = h.Store.IncrementShareView(token)
 
 	h.Render(w, r, "share_view.html", "Shared Item - File Manager", map[string]interface{}{
@@ -180,12 +219,57 @@ func (h *ShareHandler) ViewSharedItem(w http.ResponseWriter, r *http.Request) {
 	}, "", "")
 }
 
+// UnlockShareLink verifies password for a protected link and sets an access cookie.
+func (h *ShareHandler) UnlockShareLink(w http.ResponseWriter, r *http.Request) {
+	token := r.PathValue("token")
+	shareLink, err := h.Store.GetShareLink(token)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	if shareLink.IsExhausted() {
+		h.Render(w, r, "share_view.html", "Link Expired - File Manager", map[string]interface{}{
+			"Exhausted": true,
+		}, "This share link has reached its maximum view limit.", "")
+		return
+	}
+
+	password := r.FormValue("password")
+	if !shareLink.HasPassword() || auth.CheckPassword(password, shareLink.PasswordHash) {
+		http.SetCookie(w, &http.Cookie{
+			Name:     "unlock_" + token,
+			Value:    "1",
+			Path:     "/",
+			HttpOnly: true,
+			SameSite: http.SameSiteLaxMode,
+		})
+		http.Redirect(w, r, "/share/"+token, http.StatusSeeOther)
+		return
+	}
+
+	h.Render(w, r, "share_view.html", "Protected Link - File Manager", map[string]interface{}{
+		"PasswordRequired": true,
+		"Token":            token,
+	}, "Incorrect password. Please try again.", "")
+}
+
 // DownloadSharedFile allows direct public download of a shared file.
 func (h *ShareHandler) DownloadSharedFile(w http.ResponseWriter, r *http.Request) {
 	token := r.PathValue("token")
 	shareLink, err := h.Store.GetShareLink(token)
 	if err != nil || shareLink.ItemType != models.ItemTypeFile || shareLink.File == nil {
 		http.NotFound(w, r)
+		return
+	}
+
+	if shareLink.IsExhausted() {
+		http.Error(w, "Share link has reached its view limit", http.StatusGone)
+		return
+	}
+
+	if shareLink.HasPassword() && !isShareUnlocked(r, token) {
+		http.Redirect(w, r, "/share/"+token, http.StatusSeeOther)
 		return
 	}
 
@@ -217,6 +301,16 @@ func (h *ShareHandler) AudioSharedStream(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	if shareLink.IsExhausted() {
+		http.Error(w, "Share link has reached its view limit", http.StatusGone)
+		return
+	}
+
+	if shareLink.HasPassword() && !isShareUnlocked(r, token) {
+		http.Redirect(w, r, "/share/"+token, http.StatusSeeOther)
+		return
+	}
+
 	f, err := os.Open(shareLink.File.StoredPath)
 	if err != nil {
 		http.Error(w, "Audio file missing", http.StatusGone)
@@ -242,6 +336,16 @@ func (h *ShareHandler) ViewSharedMediaInline(w http.ResponseWriter, r *http.Requ
 	shareLink, err := h.Store.GetShareLink(token)
 	if err != nil || shareLink.ItemType != models.ItemTypeFile || shareLink.File == nil {
 		http.NotFound(w, r)
+		return
+	}
+
+	if shareLink.IsExhausted() {
+		http.Error(w, "Share link has reached its view limit", http.StatusGone)
+		return
+	}
+
+	if shareLink.HasPassword() && !isShareUnlocked(r, token) {
+		http.Redirect(w, r, "/share/"+token, http.StatusSeeOther)
 		return
 	}
 

@@ -45,6 +45,10 @@ type Store interface {
 	DeleteFile(id, userID string) (*models.FileItem, error)
 	GetFileByChecksum(userID, checksum string) (*models.FileItem, error)
 	MoveFile(id, userID string, newCategoryID *string) error
+	RenameFile(id, userID, newFilename string) error
+	GetFilesByIDs(ids []string, userID string) ([]*models.FileItem, error)
+	DeleteFiles(ids []string, userID string) ([]*models.FileItem, error)
+	MoveFiles(ids []string, userID string, newCategoryID *string) error
 
 	// Snippets
 	CreateSnippet(snippet *models.Snippet) error
@@ -54,6 +58,8 @@ type Store interface {
 	UpdateSnippet(snippet *models.Snippet) error
 	DeleteSnippet(id, userID string) error
 	MoveSnippet(id, userID string, newCategoryID *string) error
+	RenameSnippet(id, userID, newTitle string) error
+	DeleteSnippets(ids []string, userID string) error
 
 	// Tags
 	AssignItemTags(itemID string, itemType models.ItemType, tags []string, userID string) error
@@ -69,4 +75,7 @@ type Store interface {
 
 	// Fuzzy Search
 	SearchItems(userID, query string, tagFilter string) ([]models.SearchResult, error)
+
+	// Storage Analytics
+	GetUserStorageStats(userID string) (*models.StorageStats, error)
 }

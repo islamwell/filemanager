@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 	"unicode/utf8"
@@ -292,3 +293,72 @@ func (h *SnippetHandler) MoveSnippet(w http.ResponseWriter, r *http.Request) {
 
 	http.Redirect(w, r, "/snippets/"+id+"?msg=Snippet+moved+successfully", http.StatusSeeOther)
 }
+
+// RenameSnippet renames an existing snippet.
+func (h *SnippetHandler) RenameSnippet(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r.Context())
+	if user == nil {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
+	id := r.PathValue("id")
+	newTitle := strings.TrimSpace(r.FormValue("title"))
+	if newTitle == "" {
+		http.Redirect(w, r, "/?err=Title+cannot+be+empty", http.StatusSeeOther)
+		return
+	}
+
+	if err := h.Store.RenameSnippet(id, user.ID, newTitle); err != nil {
+		http.Redirect(w, r, "/?err="+err.Error(), http.StatusSeeOther)
+		return
+	}
+
+	if r.Header.Get("X-Requested-With") == "XMLHttpRequest" || strings.Contains(r.Header.Get("Accept"), "application/json") {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"success":true}`))
+		return
+	}
+
+	http.Redirect(w, r, "/?msg=Snippet+renamed+successfully", http.StatusSeeOther)
+}
+
+// BatchDeleteSnippets removes multiple snippets.
+func (h *SnippetHandler) BatchDeleteSnippets(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r.Context())
+	if user == nil {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
+	if err := r.ParseForm(); err != nil {
+		http.Redirect(w, r, "/?err=Invalid+request", http.StatusSeeOther)
+		return
+	}
+
+	ids := r.Form["snippet_ids"]
+	if len(ids) == 0 {
+		if raw := r.FormValue("snippet_ids"); raw != "" {
+			ids = strings.Split(raw, ",")
+		}
+	}
+
+	if len(ids) == 0 {
+		http.Redirect(w, r, "/?err=No+snippets+selected", http.StatusSeeOther)
+		return
+	}
+
+	if err := h.Store.DeleteSnippets(ids, user.ID); err != nil {
+		http.Redirect(w, r, "/?err="+err.Error(), http.StatusSeeOther)
+		return
+	}
+
+	if r.Header.Get("X-Requested-With") == "XMLHttpRequest" || strings.Contains(r.Header.Get("Accept"), "application/json") {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(fmt.Sprintf(`{"success":true,"count":%d}`, len(ids))))
+		return
+	}
+
+	http.Redirect(w, r, fmt.Sprintf("/?msg=%d+snippets+deleted+successfully", len(ids)), http.StatusSeeOther)
+}
+

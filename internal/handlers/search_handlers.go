@@ -59,6 +59,8 @@ func (h *SearchHandler) DashboardView(w http.ResponseWriter, r *http.Request) {
 		activeCategory, _ = h.Store.GetCategoryByID(*categoryID, user.ID)
 	}
 
+	storageStats, _ := h.Store.GetUserStorageStats(user.ID)
+
 	data := map[string]interface{}{
 		"Categories":     categories,
 		"Files":          files,
@@ -69,6 +71,7 @@ func (h *SearchHandler) DashboardView(w http.ResponseWriter, r *http.Request) {
 		"ActiveTag":      tagFilter,
 		"TotalFiles":     len(files),
 		"TotalSnippets":  len(snippets),
+		"StorageStats":   storageStats,
 	}
 
 	h.Render(w, r, "dashboard.html", "Dashboard - File Manager", data, flashErr, flashMsg)

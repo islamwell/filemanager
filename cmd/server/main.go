@@ -85,6 +85,7 @@ func main() {
 
 	// Public Sharing Routes (No authentication required)
 	mux.HandleFunc("GET /share/{token}", shareHandler.ViewSharedItem)
+	mux.HandleFunc("POST /share/{token}/unlock", shareHandler.UnlockShareLink)
 	mux.HandleFunc("GET /share/{token}/download", shareHandler.DownloadSharedFile)
 	mux.HandleFunc("GET /share/{token}/audio", shareHandler.AudioSharedStream)
 	mux.HandleFunc("GET /share/{token}/view", shareHandler.ViewSharedMediaInline)
@@ -98,8 +99,12 @@ func main() {
 	mux.Handle("GET /files/{id}/download", middleware.RequireAuth(http.HandlerFunc(fileHandler.DownloadFile)))
 	mux.Handle("GET /files/{id}/view", middleware.RequireAuth(http.HandlerFunc(fileHandler.ViewFileInline)))
 	mux.Handle("GET /files/{id}/audio", middleware.RequireAuth(http.HandlerFunc(fileHandler.AudioStream)))
+	mux.Handle("POST /files/{id}/rename", middleware.RequireAuth(http.HandlerFunc(fileHandler.RenameFile)))
 	mux.Handle("POST /files/{id}/move", middleware.RequireAuth(http.HandlerFunc(fileHandler.MoveFile)))
 	mux.Handle("POST /files/{id}/delete", middleware.RequireAuth(http.HandlerFunc(fileHandler.DeleteFile)))
+	mux.Handle("POST /files/batch/zip", middleware.RequireAuth(http.HandlerFunc(fileHandler.BatchZipDownload)))
+	mux.Handle("POST /files/batch/delete", middleware.RequireAuth(http.HandlerFunc(fileHandler.BatchDeleteFiles)))
+	mux.Handle("POST /files/batch/move", middleware.RequireAuth(http.HandlerFunc(fileHandler.BatchMoveFiles)))
 
 	// Snippet Management Routes
 	mux.Handle("GET /snippets/new", middleware.RequireAuth(http.HandlerFunc(snippetHandler.NewSnippetView)))
@@ -107,8 +112,10 @@ func main() {
 	mux.Handle("GET /snippets/{id}", middleware.RequireAuth(http.HandlerFunc(snippetHandler.ViewSnippet)))
 	mux.Handle("GET /snippets/{id}/edit", middleware.RequireAuth(http.HandlerFunc(snippetHandler.EditSnippetView)))
 	mux.Handle("POST /snippets/{id}/edit", middleware.RequireAuth(http.HandlerFunc(snippetHandler.UpdateSnippet)))
+	mux.Handle("POST /snippets/{id}/rename", middleware.RequireAuth(http.HandlerFunc(snippetHandler.RenameSnippet)))
 	mux.Handle("POST /snippets/{id}/move", middleware.RequireAuth(http.HandlerFunc(snippetHandler.MoveSnippet)))
 	mux.Handle("POST /snippets/{id}/delete", middleware.RequireAuth(http.HandlerFunc(snippetHandler.DeleteSnippet)))
+	mux.Handle("POST /snippets/batch/delete", middleware.RequireAuth(http.HandlerFunc(snippetHandler.BatchDeleteSnippets)))
 
 	// Folder / Category Routes (Hierarchical max 4 levels)
 	mux.Handle("POST /categories", middleware.RequireAuth(http.HandlerFunc(categoryHandler.CreateCategory)))

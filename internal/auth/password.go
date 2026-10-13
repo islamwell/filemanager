@@ -38,3 +38,19 @@ func CheckPassword(password, hash string) bool {
 	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
 	return err == nil
 }
+
+// HashSharePassword hashes a share link password (minimum 1 char, max 72 bytes).
+func HashSharePassword(password string) (string, error) {
+	if len(password) == 0 {
+		return "", errors.New("password cannot be empty")
+	}
+	if len(password) > 72 {
+		return "", ErrPasswordTooLong
+	}
+	bytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return "", fmt.Errorf("failed to hash password: %w", err)
+	}
+	return string(bytes), nil
+}
+

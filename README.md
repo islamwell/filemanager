@@ -40,20 +40,32 @@ A secure, high-performance, self-contained file and snippet manager web applicat
    - Instant owner revocation.
    - Public view, download, audio streaming, and rich media previews without authentication.
    - Automatic access view counter.
-8. **Clipboard Paste & Drag-and-Drop Uploads**:
    - Drag and drop files from desktop directly onto the browser window with visual drop target overlay.
    - Press <kbd>Ctrl+V</kbd> / <kbd>Cmd+V</kbd> anywhere to instantly upload pasted screenshots or images from the clipboard.
    - Paste plain text directly to create new text snippets.
-9. **Security Hardening**:
-   - In-memory sliding window IP rate limiting on `/login` and `/register` to stop brute-force attacks and prevent bcrypt CPU exhaustion.
-   - Double-submit CSRF cookie protection on all state-changing endpoints.
-   - Context-aware XSS escaping with Go's `html/template`.
-   - Strict HTTP security headers (`Content-Security-Policy`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy`).
-10. **Operations & Monitoring**:
+9. **Dark / Light Mode System**:
+   - Zero-FOUC modern theme switching adhering to system preferences and persisted in localStorage.
+   - Fully styled dark palette with CSS variables and responsive navigation toggle.
+10. **Bulk Multi-Selection & Batch Actions**:
+    - Multi-select checkboxes for files and snippets with floating action bar.
+    - On-the-fly streaming ZIP download (`archive/zip`) with zero disk/RAM bloat.
+    - Batch deletion and batch relocation across folder hierarchies.
+11. **Advanced Share Security**:
+    - Optional bcrypt password protection on public share links with secure session unlock.
+    - Self-destruct view limits (`max_views`) expiring links automatically after reached access counts.
+12. **Inline Renaming & Storage Quota Meter**:
+    - Quick inline modal renaming for files and snippets without page reloading.
+    - Real-time disk storage analytics breaking down bytes by image, audio, video, documents, and other.
+13. **Security Hardening**:
+    - In-memory sliding window IP rate limiting on `/login` and `/register` to stop brute-force attacks and prevent bcrypt CPU exhaustion.
+    - Double-submit CSRF cookie protection on all state-changing endpoints.
+    - Context-aware XSS escaping with Go's `html/template`.
+    - Strict HTTP security headers (`Content-Security-Policy`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy`).
+14. **Operations & Monitoring**:
     - Unauthenticated `/healthz` endpoint returning JSON health status, version, and server timestamp.
     - Zero external runtime dependencies (HTML, CSS, JS embedded via `embed.FS`; pure Go SQLite).
-11. **Footer Versioning**:
-    - Displays version and update timestamp (`v1.0.14 (updated 2026-10-14 00:48)`).
+15. **Footer Versioning**:
+    - Displays version and update timestamp (`v1.0.15 (updated 2026-10-14 01:10)`).
 
 ---
 

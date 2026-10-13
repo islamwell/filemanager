@@ -194,17 +194,29 @@ const (
 
 // ShareLink represents a public access token for a specific file or snippet.
 type ShareLink struct {
-	Token     string     `json:"token"`
-	UserID    string     `json:"user_id"`
-	ItemID    string     `json:"item_id"`
-	ItemType  ItemType   `json:"item_type"`
-	ExpiresAt *time.Time `json:"expires_at"` // nil = never expires
-	ViewCount int        `json:"view_count"`
-	CreatedAt time.Time  `json:"created_at"`
+	Token        string     `json:"token"`
+	UserID       string     `json:"user_id"`
+	ItemID       string     `json:"item_id"`
+	ItemType     ItemType   `json:"item_type"`
+	PasswordHash string     `json:"-"`
+	MaxViews     int        `json:"max_views"` // 0 = unlimited, >0 = self-destruct after max views
+	ExpiresAt    *time.Time `json:"expires_at"` // nil = never expires
+	ViewCount    int        `json:"view_count"`
+	CreatedAt    time.Time  `json:"created_at"`
 
 	// Populated target items for rendering
 	File    *FileItem `json:"file,omitempty"`
 	Snippet *Snippet  `json:"snippet,omitempty"`
+}
+
+// HasPassword returns true if the share link requires a password to access.
+func (s *ShareLink) HasPassword() bool {
+	return s.PasswordHash != ""
+}
+
+// IsExhausted returns true if the share link has reached its maximum view limit.
+func (s *ShareLink) IsExhausted() bool {
+	return s.MaxViews > 0 && s.ViewCount >= s.MaxViews
 }
 
 // IsExpired checks if the share link's expiration date has passed.
@@ -213,6 +225,44 @@ func (s *ShareLink) IsExpired() bool {
 		return false
 	}
 	return time.Now().After(*s.ExpiresAt)
+}
+
+// StorageStats aggregates disk usage and counts for user dashboard reporting.
+type StorageStats struct {
+	TotalBytes   int64 `json:"total_bytes"`
+	ImageBytes   int64 `json:"image_bytes"`
+	AudioBytes   int64 `json:"audio_bytes"`
+	VideoBytes   int64 `json:"video_bytes"`
+	DocBytes     int64 `json:"doc_bytes"`
+	OtherBytes   int64 `json:"other_bytes"`
+	SnippetCount int   `json:"snippet_count"`
+	FileCount    int   `json:"file_count"`
+}
+
+// FormattedTotal returns human-readable string for total storage used.
+func (st *StorageStats) FormattedTotal() string {
+	const unit = 1024
+	if st.TotalBytes < unit {
+		return fmt.Sprintf("%d B", st.TotalBytes)
+	}
+	div, exp := int64(unit), 0
+	for n := st.TotalBytes / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+	return fmt.Sprintf("%.1f %cB", float64(st.TotalBytes)/float64(div), "KMGTPE"[exp])
+}
+
+// PercentUsage returns estimated percentage against default quota of 100MB (or custom max).
+func (st *StorageStats) PercentUsage(quotaBytes int64) float64 {
+	if quotaBytes <= 0 {
+		quotaBytes = 100 * 1024 * 1024
+	}
+	pct := (float64(st.TotalBytes) / float64(quotaBytes)) * 100.0
+	if pct > 100.0 {
+		return 100.0
+	}
+	return pct
 }
 
 // SearchResult is a unified item representation for fuzzy search results with relevance score.

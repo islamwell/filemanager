@@ -611,3 +611,248 @@ dialog::backdrop {
 .markdown-body .md-ul { padding-left: 1.5rem; margin: 0.75rem 0; }
 .markdown-body .md-li { margin: 0.25rem 0; }
 
+/* Dark Theme Variables & Styling */
+[data-theme="dark"] {
+  --primary: #6366f1;
+  --primary-hover: #4f46e5;
+  --primary-light: rgba(99, 102, 241, 0.15);
+  --bg-main: #0b0f19;
+  --bg-surface: #111827;
+  --bg-card: #1f2937;
+  --border: #374151;
+  --border-focus: #6366f1;
+  --text-main: #f9fafb;
+  --text-muted: #9ca3af;
+  --text-sub: #d1d5db;
+  --success: #10b981;
+  --success-bg: rgba(16, 185, 129, 0.15);
+  --danger: #ef4444;
+  --danger-bg: rgba(239, 68, 68, 0.15);
+  --warning: #f59e0b;
+  --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.2);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.4), 0 4px 6px -4px rgb(0 0 0 / 0.2);
+}
+
+[data-theme="dark"] dialog {
+  background: var(--bg-surface);
+  color: var(--text-main);
+  border-color: var(--border);
+}
+
+[data-theme="dark"] .form-control {
+  background: #1f2937;
+  color: var(--text-main);
+  border-color: #374151;
+}
+
+[data-theme="dark"] .form-control:focus {
+  background: #111827;
+  border-color: var(--primary);
+}
+
+[data-theme="dark"] .items-table th {
+  background: #1f2937;
+  color: var(--text-muted);
+}
+
+[data-theme="dark"] .items-table tr:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+[data-theme="dark"] .cat-item:hover,
+[data-theme="dark"] .cat-item.active {
+  background: rgba(99, 102, 241, 0.15);
+  color: var(--primary);
+}
+
+[data-theme="dark"] .search-input {
+  background: #1f2937;
+  color: var(--text-main);
+  border-color: #374151;
+}
+
+[data-theme="dark"] .card-section {
+  background: var(--bg-surface);
+  border-color: var(--border);
+}
+
+[data-theme="dark"] .btn-secondary {
+  background: #1f2937;
+  color: var(--text-main);
+  border-color: #374151;
+}
+
+[data-theme="dark"] .btn-secondary:hover {
+  background: #374151;
+}
+
+[data-theme="dark"] .tag-pill {
+  background: #1f2937;
+  color: var(--text-sub);
+  border-color: #374151;
+}
+
+/* Theme Toggle Button */
+.theme-toggle-btn {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  color: var(--text-sub);
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 0;
+}
+
+.theme-toggle-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.theme-toggle-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+.theme-toggle-btn .sun-icon {
+  display: none;
+}
+
+.theme-toggle-btn .moon-icon {
+  display: block;
+}
+
+[data-theme="dark"] .theme-toggle-btn .sun-icon {
+  display: block;
+}
+
+[data-theme="dark"] .theme-toggle-btn .moon-icon {
+  display: none;
+}
+
+/* Storage Usage Breakdown Meter */
+.storage-widget {
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border);
+}
+
+.storage-info {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  margin-bottom: 0.5rem;
+}
+
+.storage-used {
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--text-main);
+}
+
+.storage-quota {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.storage-meter-track {
+  width: 100%;
+  height: 8px;
+  background: var(--border);
+  border-radius: 9999px;
+  overflow: hidden;
+  margin-bottom: 0.75rem;
+}
+
+.storage-meter-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4f46e5, #06b6d4);
+  border-radius: 9999px;
+  transition: width 0.3s ease;
+}
+
+.storage-breakdown {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.75rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.breakdown-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.dot-image { background: #6366f1; }
+.dot-audio { background: #8b5cf6; }
+.dot-video { background: #f59e0b; }
+.dot-doc { background: #10b981; }
+.dot-other { background: #64748b; }
+
+/* Floating Batch Action Bar */
+.batch-action-bar {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.25), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  border-radius: 9999px;
+  padding: 0.5rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  z-index: 100;
+  animation: slideUp 0.2s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 20px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+.batch-info {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-main);
+  padding-left: 0.25rem;
+}
+
+.batch-count {
+  background: var(--primary);
+  color: #ffffff;
+  padding: 2px 7px;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+}
+
+.batch-buttons {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+

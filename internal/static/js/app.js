@@ -367,3 +367,183 @@ function renderMarkdown(text) {
 
   return html;
 }
+
+// -------------------------------------------------------------
+// Dark / Light Theme Switching
+// -------------------------------------------------------------
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme') || 'light';
+  const next = current === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('fm_theme', next);
+}
+
+// -------------------------------------------------------------
+// Multi-Select & Batch Actions
+// -------------------------------------------------------------
+function toggleSelectAllFiles(master) {
+  const checkboxes = document.querySelectorAll('.file-select-checkbox');
+  checkboxes.forEach(cb => cb.checked = master.checked);
+  updateBatchBar();
+}
+
+function onFileSelectionChange() {
+  const checkboxes = document.querySelectorAll('.file-select-checkbox');
+  const master = document.getElementById('selectAllFiles');
+  const checked = document.querySelectorAll('.file-select-checkbox:checked');
+  if (master) {
+    master.checked = checkboxes.length > 0 && checked.length === checkboxes.length;
+    master.indeterminate = checked.length > 0 && checked.length < checkboxes.length;
+  }
+  updateBatchBar();
+}
+
+function toggleSelectAllSnippets(master) {
+  const checkboxes = document.querySelectorAll('.snippet-select-checkbox');
+  checkboxes.forEach(cb => cb.checked = master.checked);
+}
+
+function onSnippetSelectionChange() {
+  const checkboxes = document.querySelectorAll('.snippet-select-checkbox');
+  const master = document.getElementById('selectAllSnippets');
+  const checked = document.querySelectorAll('.snippet-select-checkbox:checked');
+  if (master) {
+    master.checked = checkboxes.length > 0 && checked.length === checkboxes.length;
+    master.indeterminate = checked.length > 0 && checked.length < checkboxes.length;
+  }
+}
+
+function getSelectedFileIDs() {
+  const checked = document.querySelectorAll('.file-select-checkbox:checked');
+  return Array.from(checked).map(cb => cb.value);
+}
+
+function updateBatchBar() {
+  const bar = document.getElementById('batchActionBar');
+  const countBadge = document.getElementById('batchCountBadge');
+  const countText = document.getElementById('batchCountText');
+  if (!bar) return;
+
+  const selected = getSelectedFileIDs();
+  if (selected.length > 0) {
+    bar.style.display = 'flex';
+    if (countBadge) countBadge.textContent = selected.length;
+    if (countText) countText.textContent = selected.length === 1 ? 'file selected' : 'files selected';
+  } else {
+    bar.style.display = 'none';
+  }
+}
+
+function clearBatchSelection() {
+  document.querySelectorAll('.file-select-checkbox, .snippet-select-checkbox').forEach(cb => cb.checked = false);
+  const masterFiles = document.getElementById('selectAllFiles');
+  const masterSnippets = document.getElementById('selectAllSnippets');
+  if (masterFiles) { masterFiles.checked = false; masterFiles.indeterminate = false; }
+  if (masterSnippets) { masterSnippets.checked = false; masterSnippets.indeterminate = false; }
+  const bar = document.getElementById('batchActionBar');
+  if (bar) bar.style.display = 'none';
+}
+
+function submitBatchZip() {
+  const ids = getSelectedFileIDs();
+  if (ids.length === 0) return;
+
+  const form = document.createElement('form');
+  form.method = 'POST';
+  form.action = '/files/batch/zip';
+
+  const csrfInput = document.querySelector('input[name="_csrf"]');
+  if (csrfInput) {
+    const hiddenCSRF = document.createElement('input');
+    hiddenCSRF.type = 'hidden';
+    hiddenCSRF.name = '_csrf';
+    hiddenCSRF.value = csrfInput.value;
+    form.appendChild(hiddenCSRF);
+  }
+
+  ids.forEach(id => {
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'file_ids';
+    input.value = id;
+    form.appendChild(input);
+  });
+
+  document.body.appendChild(form);
+  form.submit();
+  document.body.removeChild(form);
+}
+
+function submitBatchDelete() {
+  const ids = getSelectedFileIDs();
+  if (ids.length === 0) return;
+
+  if (!confirm(`Are you sure you want to delete ${ids.length} selected files?`)) {
+    return;
+  }
+
+  const form = document.createElement('form');
+  form.method = 'POST';
+  form.action = '/files/batch/delete';
+
+  const csrfInput = document.querySelector('input[name="_csrf"]');
+  if (csrfInput) {
+    const hiddenCSRF = document.createElement('input');
+    hiddenCSRF.type = 'hidden';
+    hiddenCSRF.name = '_csrf';
+    hiddenCSRF.value = csrfInput.value;
+    form.appendChild(hiddenCSRF);
+  }
+
+  ids.forEach(id => {
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'file_ids';
+    input.value = id;
+    form.appendChild(input);
+  });
+
+  document.body.appendChild(form);
+  form.submit();
+}
+
+function openBatchMoveModal() {
+  const ids = getSelectedFileIDs();
+  if (ids.length === 0) return;
+
+  const hiddenIDs = document.getElementById('batchMoveFileIDs');
+  if (hiddenIDs) {
+    hiddenIDs.value = ids.join(',');
+  }
+  openDialog('batchMoveModal');
+}
+
+// -------------------------------------------------------------
+// Inline Rename Modal
+// -------------------------------------------------------------
+function openRenameModal(id, itemType, currentName) {
+  const dlg = document.getElementById('renameModal');
+  const form = document.getElementById('renameForm');
+  const input = document.getElementById('renameInput');
+  const title = document.getElementById('renameModalTitle');
+  const label = document.getElementById('renameInputLabel');
+
+  if (!dlg || !form || !input) return;
+
+  if (itemType === 'file') {
+    form.action = '/files/' + id + '/rename';
+    input.name = 'filename';
+    input.value = currentName;
+    if (title) title.textContent = '✏️ Rename File';
+    if (label) label.textContent = 'New Filename';
+  } else {
+    form.action = '/snippets/' + id + '/rename';
+    input.name = 'title';
+    input.value = currentName;
+    if (title) title.textContent = '✏️ Rename Snippet';
+    if (label) label.textContent = 'New Title';
+  }
+
+  openDialog('renameModal');
+}
+

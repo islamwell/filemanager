@@ -1,9 +1,11 @@
 package handlers
 
 import (
+	"archive/zip"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -309,3 +311,197 @@ func (h *FileHandler) MoveFile(w http.ResponseWriter, r *http.Request) {
 
 	http.Redirect(w, r, "/?msg=File+moved+successfully", http.StatusSeeOther)
 }
+
+// RenameFile renames an existing file.
+func (h *FileHandler) RenameFile(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r.Context())
+	if user == nil {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
+	id := r.PathValue("id")
+	newName := strings.TrimSpace(r.FormValue("filename"))
+	if newName == "" {
+		http.Redirect(w, r, "/?err=Filename+cannot+be+empty", http.StatusSeeOther)
+		return
+	}
+	newName = SanitizeFilename(newName)
+
+	if err := h.Store.RenameFile(id, user.ID, newName); err != nil {
+		http.Redirect(w, r, "/?err="+err.Error(), http.StatusSeeOther)
+		return
+	}
+
+	if r.Header.Get("X-Requested-With") == "XMLHttpRequest" || strings.Contains(r.Header.Get("Accept"), "application/json") {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"success":true}`))
+		return
+	}
+
+	http.Redirect(w, r, "/?msg=File+renamed+successfully", http.StatusSeeOther)
+}
+
+// BatchZipDownload streams selected files as a single zip archive.
+func (h *FileHandler) BatchZipDownload(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r.Context())
+	if user == nil {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
+	if err := r.ParseForm(); err != nil {
+		http.Redirect(w, r, "/?err=Invalid+form+data", http.StatusSeeOther)
+		return
+	}
+
+	ids := r.Form["file_ids"]
+	if len(ids) == 0 {
+		if raw := r.FormValue("file_ids"); raw != "" {
+			ids = strings.Split(raw, ",")
+		}
+	}
+
+	if len(ids) == 0 {
+		http.Redirect(w, r, "/?err=No+files+selected+for+download", http.StatusSeeOther)
+		return
+	}
+
+	files, err := h.Store.GetFilesByIDs(ids, user.ID)
+	if err != nil || len(files) == 0 {
+		http.Redirect(w, r, "/?err=No+valid+files+found", http.StatusSeeOther)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/zip")
+	w.Header().Set("Content-Disposition", "attachment; filename=\"files.zip\"")
+
+	zipWriter := zip.NewWriter(w)
+	defer zipWriter.Close()
+
+	seenNames := make(map[string]int)
+
+	for _, f := range files {
+		diskFile, err := os.Open(f.StoredPath)
+		if err != nil {
+			continue
+		}
+
+		entryName := f.OriginalFilename
+		if count, ok := seenNames[entryName]; ok {
+			seenNames[entryName]++
+			ext := filepath.Ext(entryName)
+			base := strings.TrimSuffix(entryName, ext)
+			entryName = fmt.Sprintf("%s (%d)%s", base, count+1, ext)
+		} else {
+			seenNames[entryName] = 1
+		}
+
+		header := &zip.FileHeader{
+			Name:     entryName,
+			Method:   zip.Deflate,
+			Modified: f.UpdatedAt,
+		}
+
+		writer, err := zipWriter.CreateHeader(header)
+		if err != nil {
+			diskFile.Close()
+			continue
+		}
+
+		_, _ = io.Copy(writer, diskFile)
+		diskFile.Close()
+	}
+}
+
+// BatchDeleteFiles removes multiple files and deletes them from disk.
+func (h *FileHandler) BatchDeleteFiles(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r.Context())
+	if user == nil {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
+	if err := r.ParseForm(); err != nil {
+		http.Redirect(w, r, "/?err=Invalid+request", http.StatusSeeOther)
+		return
+	}
+
+	ids := r.Form["file_ids"]
+	if len(ids) == 0 {
+		if raw := r.FormValue("file_ids"); raw != "" {
+			ids = strings.Split(raw, ",")
+		}
+	}
+
+	if len(ids) == 0 {
+		http.Redirect(w, r, "/?err=No+files+selected", http.StatusSeeOther)
+		return
+	}
+
+	deletedFiles, err := h.Store.DeleteFiles(ids, user.ID)
+	if err != nil {
+		http.Redirect(w, r, "/?err="+err.Error(), http.StatusSeeOther)
+		return
+	}
+
+	for _, f := range deletedFiles {
+		if f != nil && f.StoredPath != "" {
+			_ = os.Remove(f.StoredPath)
+		}
+	}
+
+	if r.Header.Get("X-Requested-With") == "XMLHttpRequest" || strings.Contains(r.Header.Get("Accept"), "application/json") {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(fmt.Sprintf(`{"success":true,"count":%d}`, len(deletedFiles))))
+		return
+	}
+
+	http.Redirect(w, r, fmt.Sprintf("/?msg=%d+files+deleted+successfully", len(deletedFiles)), http.StatusSeeOther)
+}
+
+// BatchMoveFiles moves multiple files to a folder/category.
+func (h *FileHandler) BatchMoveFiles(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r.Context())
+	if user == nil {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
+	if err := r.ParseForm(); err != nil {
+		http.Redirect(w, r, "/?err=Invalid+request", http.StatusSeeOther)
+		return
+	}
+
+	ids := r.Form["file_ids"]
+	if len(ids) == 0 {
+		if raw := r.FormValue("file_ids"); raw != "" {
+			ids = strings.Split(raw, ",")
+		}
+	}
+
+	if len(ids) == 0 {
+		http.Redirect(w, r, "/?err=No+files+selected", http.StatusSeeOther)
+		return
+	}
+
+	catIDStr := strings.TrimSpace(r.FormValue("category_id"))
+	var newCatID *string
+	if catIDStr != "" {
+		newCatID = &catIDStr
+	}
+
+	if err := h.Store.MoveFiles(ids, user.ID, newCatID); err != nil {
+		http.Redirect(w, r, "/?err="+err.Error(), http.StatusSeeOther)
+		return
+	}
+
+	if r.Header.Get("X-Requested-With") == "XMLHttpRequest" || strings.Contains(r.Header.Get("Accept"), "application/json") {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"success":true}`))
+		return
+	}
+
+	http.Redirect(w, r, fmt.Sprintf("/?msg=%d+files+moved+successfully", len(ids)), http.StatusSeeOther)
+}
+

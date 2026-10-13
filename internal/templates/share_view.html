@@ -9,6 +9,27 @@
     <p style="color: var(--text-muted); margin-bottom: 1.5rem;">This share link has reached its expiration time or has been revoked by the owner.</p>
     <a href="/" class="btn btn-secondary">Go to Home</a>
   </div>
+  {{else if .Data.Exhausted}}
+  <div class="card-section" style="text-align: center; padding: 3rem 1.5rem;">
+    <div style="font-size: 3rem; margin-bottom: 1rem;">🛑</div>
+    <h2 style="font-size: 1.5rem; margin-bottom: 0.5rem; color: var(--danger);">View Limit Reached</h2>
+    <p style="color: var(--text-muted); margin-bottom: 1.5rem;">This share link was configured with a maximum view limit and has self-destructed.</p>
+    <a href="/" class="btn btn-secondary">Go to Home</a>
+  </div>
+  {{else if .Data.PasswordRequired}}
+  <div class="card-section" style="max-width: 440px; margin: 0 auto; text-align: center; padding: 2.5rem 2rem;">
+    <div style="font-size: 2.5rem; margin-bottom: 1rem;">🔒</div>
+    <h2 style="font-size: 1.35rem; font-weight: 700; margin-bottom: 0.5rem;">Password Protected Link</h2>
+    <p style="color: var(--text-muted); font-size: 0.875rem; margin-bottom: 1.5rem;">Enter the password provided by the owner to unlock this content.</p>
+    <form action="/share/{{.Data.Token}}/unlock" method="POST">
+      <input type="hidden" name="_csrf" value="{{$.CSRFToken}}">
+      <div class="form-group" style="text-align: left; margin-bottom: 1.25rem;">
+        <label class="form-label" for="sharePasswordInput">Password</label>
+        <input type="password" id="sharePasswordInput" name="password" class="form-control" placeholder="Enter password" required autofocus>
+      </div>
+      <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center; padding: 0.75rem;">Unlock Content</button>
+    </form>
+  </div>
   {{else}}
   <div class="card-section">
     <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 1rem; margin-bottom: 1.25rem;">
@@ -17,7 +38,7 @@
         <span style="font-size: 0.85rem; font-weight: 600; text-transform: uppercase; color: var(--primary);">Public Shared Item</span>
       </div>
       <div style="font-size: 0.8rem; color: var(--text-muted);">
-        <span>Views: <strong>{{.Data.Share.ViewCount}}</strong></span>
+        <span>Views: <strong>{{.Data.Share.ViewCount}}</strong>{{if gt .Data.Share.MaxViews 0}} / {{.Data.Share.MaxViews}} max{{end}}</span>
         {{if .Data.Share.ExpiresAt}}
         <span>&bull; Expires {{formatDate .Data.Share.ExpiresAt}}</span>
         {{else}}
