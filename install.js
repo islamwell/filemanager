@@ -12,6 +12,7 @@ const os = require('os');
 const child_process = require('child_process');
 const readline = require('readline');
 const http = require('http');
+const https = require('https');
 const net = require('net');
 const crypto = require('crypto');
 
@@ -19,7 +20,7 @@ const crypto = require('crypto');
 // Default Configuration & Application Metadata
 // ------------------------------------------------------------------------------
 const APP_NAME = 'filemanager';
-const APP_VERSION = 'v1.0.11';
+const APP_VERSION = 'v1.0.12';
 const DEFAULT_PORT = 8080;
 const DEFAULT_HOST = '0.0.0.0';
 const DEFAULT_DATA_DIR = '/var/lib/filemanager';
@@ -313,8 +314,45 @@ function detectPackageManager() {
 }
 
 // ------------------------------------------------------------------------------
-// Binary Preparation (Pre-built, Architecture Check, or Source Build)
+// Binary Preparation (Pre-built, Remote Download, or Source Build)
 // ------------------------------------------------------------------------------
+function downloadReleaseBinary(targetPath) {
+  const arch = os.arch() === 'x64' ? 'amd64' : (os.arch() === 'arm64' ? 'arm64' : null);
+  if (!arch || !isLinux()) return false;
+
+  const binaryName = `filemanager-linux-${arch}`;
+  const downloadUrl = `https://github.com/islamwell/filemanager/releases/download/v1.0.11/${binaryName}`;
+  log.info(`Attempting to download pre-compiled release binary from GitHub:\n  ${downloadUrl}`);
+
+  if (commandExists('curl')) {
+    try {
+      const res = run('curl', ['-fSL', '-o', targetPath, downloadUrl], { stdio: 'inherit' });
+      if (res.status === 0 && fs.existsSync(targetPath) && fs.statSync(targetPath).size > 1000000) {
+        fs.chmodSync(targetPath, 0o755);
+        log.success(`Successfully downloaded pre-compiled binary via curl (${binaryName}).`);
+        return true;
+      }
+    } catch (e) {
+      log.debug(`curl download attempt failed: ${e.message}`);
+    }
+  }
+
+  if (commandExists('wget')) {
+    try {
+      const res = run('wget', ['-qO', targetPath, downloadUrl], { stdio: 'inherit' });
+      if (res.status === 0 && fs.existsSync(targetPath) && fs.statSync(targetPath).size > 1000000) {
+        fs.chmodSync(targetPath, 0o755);
+        log.success(`Successfully downloaded pre-compiled binary via wget (${binaryName}).`);
+        return true;
+      }
+    } catch (e) {
+      log.debug(`wget download attempt failed: ${e.message}`);
+    }
+  }
+
+  return false;
+}
+
 async function prepareBinary(scriptDir, targetBinPath) {
   log.info('Preparing application binary...');
   const buildTmp = path.join(os.tmpdir(), `filemanager-build-${Date.now()}`);
@@ -330,7 +368,7 @@ async function prepareBinary(scriptDir, targetBinPath) {
   const linuxArchBinary = path.join(scriptDir, `filemanager-linux-${os.arch() === 'x64' ? 'amd64' : os.arch()}`);
   let binarySource = null;
 
-  // Check pre-built binary matching current OS
+  // 1. Check local pre-built binary matching current OS
   if (fs.existsSync(linuxArchBinary) && isLinux()) {
     log.info(`Found pre-built Linux architecture binary: ${path.basename(linuxArchBinary)}`);
     binarySource = linuxArchBinary;
@@ -346,7 +384,15 @@ async function prepareBinary(scriptDir, targetBinPath) {
     }
   }
 
-  // If no valid pre-built binary, build from source
+  // 2. If no valid local binary, try downloading pre-compiled official release binary
+  if (!binarySource && isLinux()) {
+    const downloadedDest = path.join(buildTmp, 'filemanager');
+    if (downloadReleaseBinary(downloadedDest)) {
+      binarySource = downloadedDest;
+    }
+  }
+
+  // 3. Fallback: compile from Go source
   if (!binarySource) {
     const mainGo = path.join(scriptDir, 'cmd', 'server', 'main.go');
     if (!fs.existsSync(mainGo)) {
@@ -375,12 +421,25 @@ async function prepareBinary(scriptDir, targetBinPath) {
       );
     }
 
-    // Run Go build
+    // Ensure Go module cache and home directory are properly set under sudo
+    const homeDir = process.env.HOME || os.homedir() || '/root';
+    const goPath = process.env.GOPATH || path.join(homeDir, 'go');
+    const goModCache = process.env.GOMODCACHE || path.join(goPath, 'pkg', 'mod');
+
     log.info("Running: CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' cmd/server/main.go");
     const buildRes = run(
       'go',
       ['build', '-trimpath', '-ldflags=-s -w', '-o', path.join(buildTmp, 'filemanager'), 'cmd/server/main.go'],
-      { cwd: scriptDir, env: { CGO_ENABLED: '0' }, stdio: 'inherit' }
+      {
+        cwd: scriptDir,
+        env: {
+          CGO_ENABLED: '0',
+          HOME: homeDir,
+          GOPATH: goPath,
+          GOMODCACHE: goModCache,
+        },
+        stdio: 'inherit',
+      }
     );
 
     if (buildRes.status !== 0) {
@@ -388,7 +447,7 @@ async function prepareBinary(scriptDir, targetBinPath) {
     }
     binarySource = path.join(buildTmp, 'filemanager');
     log.success('Go compilation completed successfully.');
-  } else {
+  } else if (binarySource !== path.join(buildTmp, 'filemanager')) {
     // Copy pre-built
     const dest = path.join(buildTmp, 'filemanager');
     fs.copyFileSync(binarySource, dest);
