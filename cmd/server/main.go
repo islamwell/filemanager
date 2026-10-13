@@ -65,7 +65,7 @@ func main() {
 	mux := http.NewServeMux()
 
 	// Static Assets
-	mux.Handle("GET /static/", http.FileServer(http.FS(static.FS)))
+	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.FS(static.FS))))
 
 	// In-memory rate limiter for authentication routes (15 attempts/minute/IP)
 	authLimiter := middleware.NewRateLimiter(15, 1*time.Minute)
