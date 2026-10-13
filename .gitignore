@@ -1,5 +1,7 @@
 # Binary
 filemanager
+filemanager-linux-*
+filemanager-*
 *.exe
 *.exe~
 *.dll

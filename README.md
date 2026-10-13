@@ -53,7 +53,7 @@ A secure, high-performance, self-contained file and snippet manager web applicat
     - Unauthenticated `/healthz` endpoint returning JSON health status, version, and server timestamp.
     - Zero external runtime dependencies (HTML, CSS, JS embedded via `embed.FS`; pure Go SQLite).
 11. **Footer Versioning**:
-    - Displays version and update timestamp (`v1.0.10 (updated 2026-10-13 17:33)`).
+    - Displays version and update timestamp (`v1.0.11 (updated 2026-10-13 17:42)`).
 
 ---
 
