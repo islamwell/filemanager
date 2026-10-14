@@ -86,7 +86,7 @@ func SessionMiddleware(st store.Store) func(http.Handler) http.Handler {
 				session, err := st.GetSession(cookie.Value)
 				if err == nil && session != nil {
 					user, err := st.GetUserByID(session.UserID)
-					if err == nil && user != nil {
+					if err == nil && user != nil && user.IsApproved {
 						ctx = context.WithValue(ctx, UserContextKey, user)
 					}
 				}
@@ -106,6 +106,22 @@ func RequireAuth(next http.Handler) http.Handler {
 				return
 			}
 			http.Redirect(w, r, "/login?next="+r.URL.Path, http.StatusSeeOther)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+// RequireAdmin ensures that the authenticated user has administrator privileges.
+func RequireAdmin(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		user := GetUserFromContext(r.Context())
+		if user == nil {
+			http.Redirect(w, r, "/login?next="+r.URL.Path, http.StatusSeeOther)
+			return
+		}
+		if !user.IsAdmin {
+			http.Error(w, "Forbidden: Administrator privileges required.", http.StatusForbidden)
 			return
 		}
 		next.ServeHTTP(w, r)

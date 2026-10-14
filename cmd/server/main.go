@@ -60,12 +60,40 @@ func main() {
 	categoryHandler := handlers.NewCategoryHandler(baseHandler)
 	shareHandler := handlers.NewShareHandler(baseHandler)
 	searchHandler := handlers.NewSearchHandler(baseHandler)
+	adminHandler := handlers.NewAdminHandler(baseHandler)
 
 	// Build Router
 	mux := http.NewServeMux()
 
 	// Static Assets
 	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.FS(static.FS))))
+
+	// PWA Manifest and Service Worker
+	mux.HandleFunc("GET /manifest.json", func(w http.ResponseWriter, r *http.Request) {
+		data, err := static.FS.ReadFile("manifest.json")
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "application/manifest+json")
+		w.Header().Set("Cache-Control", "public, max-age=3600")
+		_, _ = w.Write(data)
+	})
+
+	mux.HandleFunc("GET /sw.js", func(w http.ResponseWriter, r *http.Request) {
+		data, err := static.FS.ReadFile("sw.js")
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
+		w.Header().Set("Service-Worker-Allowed", "/")
+		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+		_, _ = w.Write(data)
+	})
+
+	// Offline Fallback View
+	mux.HandleFunc("GET /offline", baseHandler.OfflineView)
 
 	// In-memory rate limiter for authentication routes (15 attempts/minute/IP)
 	authLimiter := middleware.NewRateLimiter(15, 1*time.Minute)
@@ -124,6 +152,13 @@ func main() {
 	// Sharing Management Routes
 	mux.Handle("POST /items/share", middleware.RequireAuth(http.HandlerFunc(shareHandler.CreateShareLink)))
 	mux.Handle("POST /shares/{token}/delete", middleware.RequireAuth(http.HandlerFunc(shareHandler.DeleteShareLink)))
+
+	// Administrator Routes
+	mux.Handle("GET /admin/users", middleware.RequireAuth(middleware.RequireAdmin(http.HandlerFunc(adminHandler.AdminUsersView))))
+	mux.Handle("POST /admin/users/{id}/approve", middleware.RequireAuth(middleware.RequireAdmin(http.HandlerFunc(adminHandler.ApproveUser))))
+	mux.Handle("POST /admin/users/{id}/reject", middleware.RequireAuth(middleware.RequireAdmin(http.HandlerFunc(adminHandler.RejectUser))))
+	mux.Handle("POST /admin/users/{id}/role", middleware.RequireAuth(middleware.RequireAdmin(http.HandlerFunc(adminHandler.ToggleUserRole))))
+	mux.Handle("POST /admin/users/{id}/delete", middleware.RequireAuth(middleware.RequireAdmin(http.HandlerFunc(adminHandler.DeleteUser))))
 
 	// Apply Middleware Stack (Outer to Inner)
 	handler := middleware.LoggingAndRecovery(

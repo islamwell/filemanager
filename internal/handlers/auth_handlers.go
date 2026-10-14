@@ -27,9 +27,10 @@ func (h *AuthHandler) LoginView(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
+	infoMsg := r.URL.Query().Get("msg")
 	h.Render(w, r, "login.html", "Sign In - File Manager", map[string]string{
 		"Next": r.URL.Query().Get("next"),
-	}, "", "")
+	}, "", infoMsg)
 }
 
 // LoginSubmit authenticates the user and issues a secure session cookie.
@@ -46,6 +47,11 @@ func (h *AuthHandler) LoginSubmit(w http.ResponseWriter, r *http.Request) {
 	user, err := h.Store.GetUserByUsername(username)
 	if err != nil || !auth.CheckPassword(password, user.PasswordHash) {
 		h.Render(w, r, "login.html", "Sign In - File Manager", map[string]string{"Username": username, "Next": nextURL}, "Invalid username or password.", "")
+		return
+	}
+
+	if !user.IsApproved {
+		h.Render(w, r, "login.html", "Sign In - File Manager", map[string]string{"Username": username, "Next": nextURL}, "Your account registration is pending administrator approval. Please wait for an administrator to approve your account.", "")
 		return
 	}
 
@@ -130,7 +136,13 @@ func (h *AuthHandler) RegisterSubmit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Auto log in after registration
+	// If account requires admin approval, prompt user to wait and do not establish session
+	if !user.IsApproved {
+		h.Render(w, r, "login.html", "Sign In - File Manager", map[string]string{"Username": username}, "", "Registration submitted successfully! Your account is pending administrator approval before you can sign in.")
+		return
+	}
+
+	// Auto log in after registration (for first user who is admin)
 	token, _ := auth.GenerateSessionToken()
 	expiresAt := time.Now().Add(auth.SessionDuration)
 	_ = h.Store.CreateSession(&models.Session{

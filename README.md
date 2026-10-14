@@ -56,16 +56,26 @@ A secure, high-performance, self-contained file and snippet manager web applicat
 12. **Inline Renaming & Storage Quota Meter**:
     - Quick inline modal renaming for files and snippets without page reloading.
     - Real-time disk storage analytics breaking down bytes by image, audio, video, documents, and other.
-13. **Security Hardening**:
+13. **Progressive Web App (PWA) & Offline Mode**:
+    - Full offline capability with Service Worker (`/sw.js`) and Web App Manifest (`/manifest.json`).
+    - Dedicated offline fallback page (`/offline`) allowing users to view and copy cached snippets offline.
+    - Automatic snippet caching in browser localStorage upon viewing.
+    - Real-time network status indicator banner.
+14. **Admin Approval & User Access Management**:
+    - First registered user automatically becomes the primary administrator and is immediately approved.
+    - Subsequent registrations are queued with pending approval and cannot log in until approved.
+    - Admin dashboard (`/admin/users`) to approve, revoke, promote/demote, and manage user accounts.
+    - Instant session revocation when user approval is revoked.
+15. **Security Hardening**:
     - In-memory sliding window IP rate limiting on `/login` and `/register` to stop brute-force attacks and prevent bcrypt CPU exhaustion.
     - Double-submit CSRF cookie protection on all state-changing endpoints.
     - Context-aware XSS escaping with Go's `html/template`.
     - Strict HTTP security headers (`Content-Security-Policy`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy`).
-14. **Operations & Monitoring**:
+16. **Operations & Monitoring**:
     - Unauthenticated `/healthz` endpoint returning JSON health status, version, and server timestamp.
     - Zero external runtime dependencies (HTML, CSS, JS embedded via `embed.FS`; pure Go SQLite).
-15. **Footer Versioning**:
-    - Displays version and update timestamp (`v1.0.15 (updated 2026-10-14 01:10)`).
+17. **Footer Versioning**:
+    - Displays version and update timestamp (`v1.0.16 (updated 2026-10-14 10:54)`).
 
 ---
 

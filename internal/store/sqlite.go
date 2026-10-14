@@ -62,6 +62,8 @@ func (s *SQLiteStore) initSchema() error {
 		id TEXT PRIMARY KEY,
 		username TEXT UNIQUE NOT NULL COLLATE NOCASE,
 		password_hash TEXT NOT NULL,
+		is_admin BOOLEAN NOT NULL DEFAULT 0,
+		is_approved BOOLEAN NOT NULL DEFAULT 1,
 		created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 		updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 	);
@@ -150,6 +152,8 @@ func (s *SQLiteStore) initSchema() error {
 	// Safe backward-compatible schema migrations for existing SQLite databases
 	_, _ = s.db.Exec(`ALTER TABLE share_links ADD COLUMN password_hash TEXT NOT NULL DEFAULT ''`)
 	_, _ = s.db.Exec(`ALTER TABLE share_links ADD COLUMN max_views INTEGER NOT NULL DEFAULT 0`)
+	_, _ = s.db.Exec(`ALTER TABLE users ADD COLUMN is_admin BOOLEAN NOT NULL DEFAULT 0`)
+	_, _ = s.db.Exec(`ALTER TABLE users ADD COLUMN is_approved BOOLEAN NOT NULL DEFAULT 1`)
 
 	return nil
 }
@@ -168,8 +172,16 @@ func (s *SQLiteStore) CreateUser(user *models.User) error {
 	user.CreatedAt = time.Now().UTC()
 	user.UpdatedAt = user.CreatedAt
 
-	query := `INSERT INTO users (id, username, password_hash, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`
-	_, err := s.db.Exec(query, user.ID, user.Username, user.PasswordHash, user.CreatedAt, user.UpdatedAt)
+	// Check if this is the first user in the database - if so, make them an approved Admin
+	var count int
+	_ = s.db.QueryRow(`SELECT COUNT(*) FROM users`).Scan(&count)
+	if count == 0 {
+		user.IsAdmin = true
+		user.IsApproved = true
+	}
+
+	query := `INSERT INTO users (id, username, password_hash, is_admin, is_approved, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)`
+	_, err := s.db.Exec(query, user.ID, user.Username, user.PasswordHash, user.IsAdmin, user.IsApproved, user.CreatedAt, user.UpdatedAt)
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
 			return ErrUserExists
@@ -183,11 +195,11 @@ func (s *SQLiteStore) GetUserByUsername(username string) (*models.User, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	query := `SELECT id, username, password_hash, created_at, updated_at FROM users WHERE username = ? COLLATE NOCASE`
+	query := `SELECT id, username, password_hash, is_admin, is_approved, created_at, updated_at FROM users WHERE username = ? COLLATE NOCASE`
 	row := s.db.QueryRow(query, username)
 
 	var u models.User
-	err := row.Scan(&u.ID, &u.Username, &u.PasswordHash, &u.CreatedAt, &u.UpdatedAt)
+	err := row.Scan(&u.ID, &u.Username, &u.PasswordHash, &u.IsAdmin, &u.IsApproved, &u.CreatedAt, &u.UpdatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -201,11 +213,11 @@ func (s *SQLiteStore) GetUserByID(id string) (*models.User, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	query := `SELECT id, username, password_hash, created_at, updated_at FROM users WHERE id = ?`
+	query := `SELECT id, username, password_hash, is_admin, is_approved, created_at, updated_at FROM users WHERE id = ?`
 	row := s.db.QueryRow(query, id)
 
 	var u models.User
-	err := row.Scan(&u.ID, &u.Username, &u.PasswordHash, &u.CreatedAt, &u.UpdatedAt)
+	err := row.Scan(&u.ID, &u.Username, &u.PasswordHash, &u.IsAdmin, &u.IsApproved, &u.CreatedAt, &u.UpdatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -222,6 +234,84 @@ func (s *SQLiteStore) CountUsers() (int, error) {
 	var count int
 	err := s.db.QueryRow(`SELECT COUNT(*) FROM users`).Scan(&count)
 	return count, err
+}
+
+func (s *SQLiteStore) ListUsers() ([]*models.User, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	query := `SELECT id, username, password_hash, is_admin, is_approved, created_at, updated_at FROM users ORDER BY created_at ASC`
+	rows, err := s.db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var users []*models.User
+	for rows.Next() {
+		var u models.User
+		if err := rows.Scan(&u.ID, &u.Username, &u.PasswordHash, &u.IsAdmin, &u.IsApproved, &u.CreatedAt, &u.UpdatedAt); err != nil {
+			return nil, err
+		}
+		users = append(users, &u)
+	}
+	return users, rows.Err()
+}
+
+func (s *SQLiteStore) UpdateUserApproval(id string, approved bool) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	query := `UPDATE users SET is_approved = ?, updated_at = ? WHERE id = ?`
+	res, err := s.db.Exec(query, approved, time.Now().UTC(), id)
+	if err != nil {
+		return err
+	}
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+func (s *SQLiteStore) UpdateUserRole(id string, isAdmin bool) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	query := `UPDATE users SET is_admin = ?, updated_at = ? WHERE id = ?`
+	res, err := s.db.Exec(query, isAdmin, time.Now().UTC(), id)
+	if err != nil {
+		return err
+	}
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+func (s *SQLiteStore) DeleteUser(id string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	res, err := s.db.Exec(`DELETE FROM users WHERE id = ?`, id)
+	if err != nil {
+		return err
+	}
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return ErrNotFound
+	}
+	return nil
 }
 
 // -------------------------------------------------------------

@@ -6,6 +6,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="color-scheme" content="light dark">
   <title>{{.Title}}</title>
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#2563eb">
+  <link rel="apple-touch-icon" href="/static/img/icon.svg">
   <link rel="stylesheet" href="/static/css/style.css">
   <script>
     (function() {
@@ -42,7 +45,13 @@
         <svg class="moon-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
       </button>
       {{if .User}}
-      <span class="user-badge">{{.User.Username}}</span>
+      {{if .User.IsAdmin}}
+      <a href="/admin/users" class="btn btn-secondary btn-sm" title="Admin User Management">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="vertical-align:-2px; margin-right:4px;"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+        Users
+      </a>
+      {{end}}
+      <span class="user-badge">{{.User.Username}}{{if .User.IsAdmin}} (Admin){{end}}</span>
       <form action="/logout" method="POST" style="display:inline;">
         <input type="hidden" name="_csrf" value="{{.CSRFToken}}">
         <button type="submit" class="btn btn-secondary btn-sm">Sign Out</button>
@@ -55,6 +64,12 @@
   </header>
 
   <main class="container">
+    <div id="offlineNotice" class="banner banner-warning" style="display:none;">
+      <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 5.636a9 9 0 010 12.728m0 0l-2.829-2.829m2.829 2.829L21 21M15.536 8.464a5 5 0 010 7.072m0 0l-2.829-2.829m-4.243 4.243a9 9 0 01-2.828-6.364 9 9 0 012.828-6.364m0 0L3 3m5.464 5.464a5 5 0 017.072 0"></path>
+      </svg>
+      <span>You are currently offline. Viewing cached app shell. <a href="/offline" style="color:inherit; font-weight:700; text-decoration:underline; margin-left:4px;">Open Offline Hub</a></span>
+    </div>
     {{if .FlashError}}
     <div class="banner banner-error">
       <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
@@ -92,6 +107,19 @@
   </footer>
 
   <script src="/static/js/app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function() {
+        navigator.serviceWorker.register('/sw.js', { scope: '/' })
+          .then(function(reg) {
+            console.log('[PWA] Service Worker registered with scope:', reg.scope);
+          })
+          .catch(function(err) {
+            console.warn('[PWA] Service Worker registration failed:', err);
+          });
+      });
+    }
+  </script>
 </body>
 </html>
 {{end}}

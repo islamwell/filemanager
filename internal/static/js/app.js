@@ -547,3 +547,57 @@ function openRenameModal(id, itemType, currentName) {
   openDialog('renameModal');
 }
 
+// -------------------------------------------------------------
+// Offline Mode & PWA Helpers
+// -------------------------------------------------------------
+function updateNetworkStatus() {
+  const banner = document.getElementById('offlineNotice');
+  if (!banner) return;
+  if (!navigator.onLine) {
+    banner.style.display = 'flex';
+  } else {
+    banner.style.display = 'none';
+  }
+}
+
+window.addEventListener('online', updateNetworkStatus);
+window.addEventListener('offline', updateNetworkStatus);
+document.addEventListener('DOMContentLoaded', updateNetworkStatus);
+
+// Automatically cache viewed snippets in localStorage for offline access
+function cacheCurrentSnippetIfPresent() {
+  const codeEl = document.getElementById('snippetRawCode');
+  if (!codeEl) return;
+
+  const titleEl = document.querySelector('.card-section h2');
+  const langEl = document.querySelector('.card-section span strong');
+
+  const title = titleEl ? titleEl.textContent.trim() : 'Untitled Snippet';
+  const language = langEl ? langEl.textContent.trim() : 'text';
+  const content = codeEl.textContent;
+
+  try {
+    let snippets = [];
+    const raw = localStorage.getItem('fm_cached_snippets');
+    if (raw) {
+      snippets = JSON.parse(raw);
+    }
+    snippets = snippets.filter(s => s.title !== title);
+    snippets.unshift({
+      title: title,
+      language: language,
+      content: content,
+      cachedAt: new Date().toISOString()
+    });
+    if (snippets.length > 50) {
+      snippets = snippets.slice(0, 50);
+    }
+    localStorage.setItem('fm_cached_snippets', JSON.stringify(snippets));
+  } catch(e) {
+    console.warn('Could not cache snippet for offline access:', e);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', cacheCurrentSnippetIfPresent);
+
+

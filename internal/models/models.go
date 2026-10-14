@@ -12,6 +12,8 @@ type User struct {
 	ID           string    `json:"id"`
 	Username     string    `json:"username"`
 	PasswordHash string    `json:"-"`
+	IsAdmin      bool      `json:"is_admin"`
+	IsApproved   bool      `json:"is_approved"` // Requires admin approval before login if false
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
 }

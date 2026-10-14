@@ -23,6 +23,10 @@ type Store interface {
 	GetUserByUsername(username string) (*models.User, error)
 	GetUserByID(id string) (*models.User, error)
 	CountUsers() (int, error)
+	ListUsers() ([]*models.User, error)
+	UpdateUserApproval(id string, approved bool) error
+	UpdateUserRole(id string, isAdmin bool) error
+	DeleteUser(id string) error
 
 	// Sessions
 	CreateSession(session *models.Session) error

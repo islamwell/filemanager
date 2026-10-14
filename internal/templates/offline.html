@@ -1,0 +1,113 @@
+{{template "base" .}}
+
+{{define "content"}}
+<div style="max-width: 800px; margin: 2rem auto;">
+  <div class="card-section" style="text-align:center; padding: 2.5rem 1.5rem; margin-bottom: 2rem;">
+    <div style="width: 64px; height: 64px; margin: 0 auto 1.25rem auto; border-radius: 50%; background: rgba(245, 158, 11, 0.1); color: #d97706; display: flex; align-items: center; justify-content: center;">
+      <svg width="32" height="32" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 5.636a9 9 0 010 12.728m0 0l-2.829-2.829m2.829 2.829L21 21M15.536 8.464a5 5 0 010 7.072m0 0l-2.829-2.829m-4.243 4.243a9 9 0 01-2.828-6.364 9 9 0 012.828-6.364m0 0L3 3m5.464 5.464a5 5 0 017.072 0"></path>
+      </svg>
+    </div>
+
+    <h1 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 0.5rem;">Offline Mode Active</h1>
+    <p style="color: var(--text-muted); max-width: 520px; margin: 0 auto 1.5rem auto; font-size: 0.95rem; line-height: 1.5;">
+      You are currently disconnected from the server. The application shell is operating from local cache, allowing you to access previously viewed snippets without an active internet connection.
+    </p>
+
+    <div style="display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap;">
+      <button onclick="window.location.reload()" class="btn btn-primary">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="vertical-align:-2px; margin-right:4px;"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+        Retry Connection
+      </button>
+      <a href="/" class="btn btn-secondary">
+        Return to Home
+      </a>
+    </div>
+  </div>
+
+  <div class="card-section">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem; flex-wrap:wrap; gap:0.5rem;">
+      <div>
+        <h2 style="font-size:1.15rem; font-weight:600; margin:0 0 0.25rem 0;">Offline Cached Snippets</h2>
+        <p style="color:var(--text-muted); font-size:0.8125rem; margin:0;">Code snippets saved automatically into browser storage while you were online.</p>
+      </div>
+      <span id="cachedCountBadge" style="font-size:0.75rem; background:rgba(37,99,235,0.1); color:var(--primary); padding:3px 8px; border-radius:9999px; font-weight:600;">0 Cached</span>
+    </div>
+
+    <div id="offlineSnippetsList" style="display:flex; flex-direction:column; gap:1rem;">
+      <!-- Populated via JavaScript from localStorage -->
+    </div>
+
+    <div id="noOfflineSnippetsNotice" style="display:none; text-align:center; padding:2rem 1rem; color:var(--text-muted);">
+      <svg width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="margin:0 auto 0.75rem auto; opacity:0.5;">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+      </svg>
+      <p style="font-size:0.9rem; margin:0;">No snippets have been cached locally yet.</p>
+      <p style="font-size:0.8125rem; margin:0.25rem 0 0 0;">When you open or edit snippets while online, they are automatically saved for offline viewing.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+  function renderOfflineSnippets() {
+    var container = document.getElementById('offlineSnippetsList');
+    var emptyNotice = document.getElementById('noOfflineSnippetsNotice');
+    var countBadge = document.getElementById('cachedCountBadge');
+    
+    var raw = localStorage.getItem('fm_cached_snippets');
+    var snippets = [];
+    try {
+      if (raw) snippets = JSON.parse(raw);
+    } catch(e) {
+      console.error('Failed to parse cached snippets', e);
+    }
+
+    if (!Array.isArray(snippets) || snippets.length === 0) {
+      container.innerHTML = '';
+      emptyNotice.style.display = 'block';
+      countBadge.textContent = '0 Cached';
+      return;
+    }
+
+    emptyNotice.style.display = 'none';
+    countBadge.textContent = snippets.length + ' Cached';
+
+    var html = '';
+    snippets.forEach(function(item, idx) {
+      var safeTitle = (item.title || 'Untitled Snippet').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      var safeLang = (item.language || 'text').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      var safeContent = (item.content || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      var snippetId = 'snippet_code_' + idx;
+
+      html += '<div style="border:1px solid var(--border-color); border-radius:8px; overflow:hidden; background:var(--bg-main);">';
+      html += '  <div style="padding:0.75rem 1rem; background:var(--bg-card); border-bottom:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center;">';
+      html += '    <div>';
+      html += '      <strong style="font-size:0.95rem;">' + safeTitle + '</strong>';
+      html += '      <span style="margin-left:8px; font-size:0.75rem; background:rgba(100,116,139,0.1); color:var(--text-muted); padding:2px 6px; border-radius:4px; text-transform:uppercase;">' + safeLang + '</span>';
+      html += '    </div>';
+      html += '    <button onclick="copyOfflineCode(\'' + snippetId + '\', this)" class="btn btn-secondary btn-sm" style="font-size:0.75rem; padding:4px 10px;">Copy Content</button>';
+      html += '  </div>';
+      html += '  <pre id="' + snippetId + '" style="margin:0; padding:1rem; font-family:var(--font-mono); font-size:0.85rem; line-height:1.5; overflow-x:auto; white-space:pre-wrap; max-height:300px; color:var(--text-main);">' + safeContent + '</pre>';
+      html += '</div>';
+    });
+
+    container.innerHTML = html;
+  }
+
+  function copyOfflineCode(elementId, btn) {
+    var el = document.getElementById(elementId);
+    if (!el) return;
+    navigator.clipboard.writeText(el.innerText).then(function() {
+      var orig = btn.innerText;
+      btn.innerText = 'Copied!';
+      btn.style.color = '#059669';
+      setTimeout(function() {
+        btn.innerText = orig;
+        btn.style.color = '';
+      }, 2000);
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', renderOfflineSnippets);
+</script>
+{{end}}

@@ -153,6 +153,18 @@ body {
   color: #065f46;
 }
 
+.banner-warning {
+  background-color: #fffbeb;
+  border: 1px solid #fde68a;
+  color: #92400e;
+}
+
+[data-theme="dark"] .banner-warning {
+  background-color: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  color: #fbbf24;
+}
+
 /* Grid & Sidebar */
 .dashboard-grid {
   display: grid;
