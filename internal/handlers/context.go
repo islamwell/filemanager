@@ -101,7 +101,7 @@ func NewBaseHandler(st store.Store, cfg *config.Config, templateFS fs.FS) (*Base
 
 // OfflineView renders the offline fallback page.
 func (h *BaseHandler) OfflineView(w http.ResponseWriter, r *http.Request) {
-	h.Render(w, r, "offline.html", "Offline Mode - File Manager", nil, "", "")
+	h.Render(w, r, "offline.html", "Offline Mode - NRQ", nil, "", "")
 }
 
 // Render renders an HTML template within the base layout.

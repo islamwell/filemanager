@@ -3,8 +3,11 @@
 {{define "content"}}
 <div style="max-width: 440px; margin: 3rem auto;">
   <div class="card-section">
-    <h2 style="font-size: 1.35rem; margin-bottom: 0.5rem; text-align: center;">Create Account</h2>
-    <p style="color: var(--text-muted); font-size: 0.875rem; text-align: center; margin-bottom: 1.5rem;">Join your team's secure file manager</p>
+    <div style="text-align: center; margin-bottom: 1.5rem;">
+      <img src="/static/img/nq-logo.png" alt="NurulQuran" class="auth-logo" style="height: 56px; width: auto; object-fit: contain; margin-bottom: 0.75rem;">
+      <h2 style="font-size: 1.35rem; margin-bottom: 0.35rem; font-weight: 700;">Create an NRQ Account</h2>
+      <p style="color: var(--text-muted); font-size: 0.875rem; margin: 0;">Register for secure file and snippet storage</p>
+    </div>
 
     <form action="/register" method="POST">
       <input type="hidden" name="_csrf" value="{{.CSRFToken}}">

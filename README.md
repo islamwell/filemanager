@@ -1,6 +1,6 @@
-# Production-Ready Go File Manager
+# NRQ - NurulQuran File Manager
 
-A secure, high-performance, self-contained file and snippet manager web application built in idiomatic Go (1.22+). Designed for small teams (~10 users) with zero-dependency binary distribution, hierarchical folder organization up to 4 levels deep, tagging, fuzzy search, single-click MP3 audio streaming, and secure shareable links with optional expiration.
+A secure, high-performance, self-contained file and snippet manager web application for NurulQuran built in idiomatic Go (1.22+). Features official NurulQuran branding, zero-dependency binary distribution, progressive web app (PWA) offline capabilities, administrator approval workflow, hierarchical folder organization up to 4 levels deep, tagging, fuzzy search, single-click MP3 audio streaming, and secure shareable links with optional expiration and passwords.
 
 ---
 
@@ -75,7 +75,7 @@ A secure, high-performance, self-contained file and snippet manager web applicat
     - Unauthenticated `/healthz` endpoint returning JSON health status, version, and server timestamp.
     - Zero external runtime dependencies (HTML, CSS, JS embedded via `embed.FS`; pure Go SQLite).
 17. **Footer Versioning**:
-    - Displays version and update timestamp (`v1.0.16 (updated 2026-10-14 10:54)`).
+    - Displays version and update timestamp (`v1.0.17 (updated 2026-10-14 11:53)`).
 
 ---
 

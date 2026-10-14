@@ -186,7 +186,7 @@ func (h *ShareHandler) ViewSharedItem(w http.ResponseWriter, r *http.Request) {
 	shareLink, err := h.Store.GetShareLink(token)
 	if err != nil {
 		if errors.Is(err, store.ErrShareExpired) {
-			h.Render(w, r, "share_view.html", "Link Expired - File Manager", map[string]interface{}{
+			h.Render(w, r, "share_view.html", "Link Expired - NRQ", map[string]interface{}{
 				"Expired": true,
 			}, "This share link has expired.", "")
 			return
@@ -196,14 +196,14 @@ func (h *ShareHandler) ViewSharedItem(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if shareLink.IsExhausted() {
-		h.Render(w, r, "share_view.html", "Link Expired - File Manager", map[string]interface{}{
+		h.Render(w, r, "share_view.html", "Link Expired - NRQ", map[string]interface{}{
 			"Exhausted": true,
 		}, "This share link has reached its maximum view limit.", "")
 		return
 	}
 
 	if shareLink.HasPassword() && !isShareUnlocked(r, token) {
-		h.Render(w, r, "share_view.html", "Protected Link - File Manager", map[string]interface{}{
+		h.Render(w, r, "share_view.html", "Protected Link - NRQ", map[string]interface{}{
 			"PasswordRequired": true,
 			"Token":            token,
 		}, "", "")
@@ -213,7 +213,7 @@ func (h *ShareHandler) ViewSharedItem(w http.ResponseWriter, r *http.Request) {
 	// Increment view count
 	_ = h.Store.IncrementShareView(token)
 
-	h.Render(w, r, "share_view.html", "Shared Item - File Manager", map[string]interface{}{
+	h.Render(w, r, "share_view.html", "Shared Item - NRQ", map[string]interface{}{
 		"Share":   shareLink,
 		"Expired": false,
 	}, "", "")
@@ -229,7 +229,7 @@ func (h *ShareHandler) UnlockShareLink(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if shareLink.IsExhausted() {
-		h.Render(w, r, "share_view.html", "Link Expired - File Manager", map[string]interface{}{
+		h.Render(w, r, "share_view.html", "Link Expired - NRQ", map[string]interface{}{
 			"Exhausted": true,
 		}, "This share link has reached its maximum view limit.", "")
 		return
@@ -248,7 +248,7 @@ func (h *ShareHandler) UnlockShareLink(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.Render(w, r, "share_view.html", "Protected Link - File Manager", map[string]interface{}{
+	h.Render(w, r, "share_view.html", "Protected Link - NRQ", map[string]interface{}{
 		"PasswordRequired": true,
 		"Token":            token,
 	}, "Incorrect password. Please try again.", "")

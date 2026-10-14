@@ -203,7 +203,7 @@ func TestPWAAndOfflineEndpoints(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to read embedded manifest.json: %v", err)
 	}
-	if !strings.Contains(string(manifestData), "FileManager") {
+	if !strings.Contains(string(manifestData), "NRQ") {
 		t.Fatalf("manifest.json missing expected content")
 	}
 
@@ -212,7 +212,7 @@ func TestPWAAndOfflineEndpoints(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to read embedded sw.js: %v", err)
 	}
-	if !strings.Contains(string(swData), "filemanager-cache") {
+	if !strings.Contains(string(swData), "nrq-cache") {
 		t.Fatalf("sw.js missing expected cache logic")
 	}
 
@@ -224,7 +224,7 @@ func TestPWAAndOfflineEndpoints(t *testing.T) {
 	if offlineRR.Code != http.StatusOK {
 		t.Fatalf("expected 200 OK for /offline, got %d", offlineRR.Code)
 	}
-	if !strings.Contains(offlineRR.Body.String(), "Offline Mode Active") {
+	if !strings.Contains(offlineRR.Body.String(), "NRQ Offline Mode") {
 		t.Fatalf("offline template missing header")
 	}
 	if !strings.Contains(offlineRR.Body.String(), "Offline Cached Snippets") {

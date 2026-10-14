@@ -28,7 +28,7 @@ func (h *AuthHandler) LoginView(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	infoMsg := r.URL.Query().Get("msg")
-	h.Render(w, r, "login.html", "Sign In - File Manager", map[string]string{
+	h.Render(w, r, "login.html", "Sign In - NRQ", map[string]string{
 		"Next": r.URL.Query().Get("next"),
 	}, "", infoMsg)
 }
@@ -40,25 +40,25 @@ func (h *AuthHandler) LoginSubmit(w http.ResponseWriter, r *http.Request) {
 	nextURL := r.FormValue("next")
 
 	if username == "" || password == "" {
-		h.Render(w, r, "login.html", "Sign In - File Manager", map[string]string{"Username": username, "Next": nextURL}, "Username and password are required.", "")
+		h.Render(w, r, "login.html", "Sign In - NRQ", map[string]string{"Username": username, "Next": nextURL}, "Username and password are required.", "")
 		return
 	}
 
 	user, err := h.Store.GetUserByUsername(username)
 	if err != nil || !auth.CheckPassword(password, user.PasswordHash) {
-		h.Render(w, r, "login.html", "Sign In - File Manager", map[string]string{"Username": username, "Next": nextURL}, "Invalid username or password.", "")
+		h.Render(w, r, "login.html", "Sign In - NRQ", map[string]string{"Username": username, "Next": nextURL}, "Invalid username or password.", "")
 		return
 	}
 
 	if !user.IsApproved {
-		h.Render(w, r, "login.html", "Sign In - File Manager", map[string]string{"Username": username, "Next": nextURL}, "Your account registration is pending administrator approval. Please wait for an administrator to approve your account.", "")
+		h.Render(w, r, "login.html", "Sign In - NRQ", map[string]string{"Username": username, "Next": nextURL}, "Your account registration is pending administrator approval. Please wait for an administrator to approve your account.", "")
 		return
 	}
 
 	// Create session
 	token, err := auth.GenerateSessionToken()
 	if err != nil {
-		h.Render(w, r, "login.html", "Sign In - File Manager", map[string]string{"Username": username, "Next": nextURL}, "Failed to generate session.", "")
+		h.Render(w, r, "login.html", "Sign In - NRQ", map[string]string{"Username": username, "Next": nextURL}, "Failed to generate session.", "")
 		return
 	}
 
@@ -70,7 +70,7 @@ func (h *AuthHandler) LoginSubmit(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.Store.CreateSession(session); err != nil {
-		h.Render(w, r, "login.html", "Sign In - File Manager", map[string]string{"Username": username, "Next": nextURL}, "Failed to create session.", "")
+		h.Render(w, r, "login.html", "Sign In - NRQ", map[string]string{"Username": username, "Next": nextURL}, "Failed to create session.", "")
 		return
 	}
 
@@ -92,7 +92,7 @@ func (h *AuthHandler) RegisterView(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
-	h.Render(w, r, "register.html", "Register Account - File Manager", nil, "", "")
+	h.Render(w, r, "register.html", "Register Account - NRQ", nil, "", "")
 }
 
 // RegisterSubmit validates and creates a new user account.
@@ -102,23 +102,23 @@ func (h *AuthHandler) RegisterSubmit(w http.ResponseWriter, r *http.Request) {
 	confirmPassword := r.FormValue("confirm_password")
 
 	if username == "" || password == "" {
-		h.Render(w, r, "register.html", "Register Account - File Manager", map[string]string{"Username": username}, "All fields are required.", "")
+		h.Render(w, r, "register.html", "Register Account - NRQ", map[string]string{"Username": username}, "All fields are required.", "")
 		return
 	}
 
 	if len(username) < 3 || len(username) > 32 {
-		h.Render(w, r, "register.html", "Register Account - File Manager", map[string]string{"Username": username}, "Username must be between 3 and 32 characters.", "")
+		h.Render(w, r, "register.html", "Register Account - NRQ", map[string]string{"Username": username}, "Username must be between 3 and 32 characters.", "")
 		return
 	}
 
 	if password != confirmPassword {
-		h.Render(w, r, "register.html", "Register Account - File Manager", map[string]string{"Username": username}, "Passwords do not match.", "")
+		h.Render(w, r, "register.html", "Register Account - NRQ", map[string]string{"Username": username}, "Passwords do not match.", "")
 		return
 	}
 
 	hash, err := auth.HashPassword(password)
 	if err != nil {
-		h.Render(w, r, "register.html", "Register Account - File Manager", map[string]string{"Username": username}, err.Error(), "")
+		h.Render(w, r, "register.html", "Register Account - NRQ", map[string]string{"Username": username}, err.Error(), "")
 		return
 	}
 
@@ -129,16 +129,16 @@ func (h *AuthHandler) RegisterSubmit(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.Store.CreateUser(user); err != nil {
 		if errors.Is(err, store.ErrUserExists) {
-			h.Render(w, r, "register.html", "Register Account - File Manager", map[string]string{"Username": username}, "Username is already taken.", "")
+			h.Render(w, r, "register.html", "Register Account - NRQ", map[string]string{"Username": username}, "Username is already taken.", "")
 			return
 		}
-		h.Render(w, r, "register.html", "Register Account - File Manager", map[string]string{"Username": username}, "Failed to create account. Please try again.", "")
+		h.Render(w, r, "register.html", "Register Account - NRQ", map[string]string{"Username": username}, "Failed to create account. Please try again.", "")
 		return
 	}
 
 	// If account requires admin approval, prompt user to wait and do not establish session
 	if !user.IsApproved {
-		h.Render(w, r, "login.html", "Sign In - File Manager", map[string]string{"Username": username}, "", "Registration submitted successfully! Your account is pending administrator approval before you can sign in.")
+		h.Render(w, r, "login.html", "Sign In - NRQ", map[string]string{"Username": username}, "", "Registration submitted successfully! Your account is pending administrator approval before you can sign in.")
 		return
 	}
 

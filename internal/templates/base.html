@@ -8,7 +8,8 @@
   <title>{{.Title}}</title>
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#2563eb">
-  <link rel="apple-touch-icon" href="/static/img/icon.svg">
+  <link rel="icon" type="image/png" href="/static/img/nq-favicon.png">
+  <link rel="apple-touch-icon" href="/static/img/nq-favicon.png">
   <link rel="stylesheet" href="/static/css/style.css">
   <script>
     (function() {
@@ -22,10 +23,8 @@
 <body>
   <header class="navbar">
     <a href="/" class="nav-brand">
-      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
-      </svg>
-      <span>File Manager</span>
+      <img src="/static/img/nq-logo.png" alt="NurulQuran" class="nav-logo">
+      <span>NRQ</span>
     </a>
 
     {{if .User}}
@@ -101,7 +100,7 @@
 
   <footer class="footer">
     <div class="footer-content">
-      <span>File Manager Application &bull; Secure Storage &amp; Sharing</span>
+      <span>NRQ &bull; NurulQuran Storage &amp; Sharing</span>
       <span class="footer-version">{{.FooterVersion}}</span>
     </div>
   </footer>

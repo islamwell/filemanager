@@ -20,14 +20,14 @@ func (h *AdminHandler) AdminUsersView(w http.ResponseWriter, r *http.Request) {
 	users, err := h.Store.ListUsers()
 	if err != nil {
 		log.Printf("[ERROR] ListUsers: %v", err)
-		h.Render(w, r, "admin_users.html", "User Management - File Manager", nil, "Failed to load user accounts.", "")
+		h.Render(w, r, "admin_users.html", "User Management - NRQ", nil, "Failed to load user accounts.", "")
 		return
 	}
 
 	flashSuccess := r.URL.Query().Get("msg")
 	flashError := r.URL.Query().Get("err")
 
-	h.Render(w, r, "admin_users.html", "User Management - File Manager", users, flashError, flashSuccess)
+	h.Render(w, r, "admin_users.html", "User Management - NRQ", users, flashError, flashSuccess)
 }
 
 // ApproveUser approves a pending user account.

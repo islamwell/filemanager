@@ -24,7 +24,7 @@ func main() {
 	cfg := config.LoadConfig()
 
 	log.Printf("==================================================")
-	log.Printf(" Starting File Manager (%s)", services.GetFooterVersion())
+	log.Printf(" Starting NRQ (%s)", services.GetFooterVersion())
 	log.Printf(" Storage Directory : %s", cfg.StorageDir)
 	log.Printf(" Database Path     : %s", cfg.DatabasePath)
 	log.Printf(" Max Upload Size   : %d MB", cfg.MaxFileSize/(1024*1024))

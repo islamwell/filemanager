@@ -29,7 +29,7 @@ func (h *SnippetHandler) NewSnippetView(w http.ResponseWriter, r *http.Request) 
 	}
 
 	categories, _ := h.Store.ListCategories(user.ID)
-	h.Render(w, r, "snippet_new.html", "New Text Snippet - File Manager", map[string]interface{}{
+	h.Render(w, r, "snippet_new.html", "New Text Snippet - NRQ", map[string]interface{}{
 		"Categories": categories,
 	}, "", "")
 }

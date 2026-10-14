@@ -1,11 +1,13 @@
-// File Manager Progressive Web App (PWA) Service Worker
-const CACHE_NAME = 'filemanager-cache-v1.0.16';
+// NRQ Progressive Web App (PWA) Service Worker
+const CACHE_NAME = 'nrq-cache-v1.0.17';
 
 const STATIC_ASSETS = [
   '/',
   '/offline',
   '/static/css/style.css',
   '/static/js/app.js',
+  '/static/img/nq-logo.png',
+  '/static/img/nq-favicon.png',
   '/static/img/icon.svg',
   '/manifest.json'
 ];

@@ -1,7 +1,7 @@
 {
-  "name": "File Manager Web Application",
-  "short_name": "FileManager",
-  "description": "Secure file storage, streaming audio, code snippets, and hierarchical folder manager.",
+  "name": "NRQ - NurulQuran FileManager",
+  "short_name": "NRQ",
+  "description": "NurulQuran secure file storage, streaming audio, and code snippet manager.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
@@ -9,6 +9,12 @@
   "theme_color": "#2563eb",
   "orientation": "any",
   "icons": [
+    {
+      "src": "/static/img/nq-favicon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
     {
       "src": "/static/img/icon.svg",
       "sizes": "192x192 512x512",

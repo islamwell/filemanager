@@ -74,7 +74,7 @@ func (h *SearchHandler) DashboardView(w http.ResponseWriter, r *http.Request) {
 		"StorageStats":   storageStats,
 	}
 
-	h.Render(w, r, "dashboard.html", "Dashboard - File Manager", data, flashErr, flashMsg)
+	h.Render(w, r, "dashboard.html", "Dashboard - NRQ", data, flashErr, flashMsg)
 }
 
 // SearchView handles fuzzy search requests across files, snippets, categories, and tags.
@@ -103,5 +103,5 @@ func (h *SearchHandler) SearchView(w http.ResponseWriter, r *http.Request) {
 		"Tags":         tags,
 	}
 
-	h.Render(w, r, "search_results.html", "Search Results - File Manager", data, "", "")
+	h.Render(w, r, "search_results.html", "Search Results - NRQ", data, "", "")
 }
