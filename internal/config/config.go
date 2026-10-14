@@ -30,7 +30,7 @@ func LoadConfig() *Config {
 		DatabasePath: "./data/filemanager.db",
 		MaxFileSize:  100 * 1024 * 1024, // 100 MB default
 		SecureCookie: false,             // Set to true behind production HTTPS
-		AppVersion:   "v1.0.17",
+		AppVersion:   "v1.0.18",
 	}
 
 	// Environment variable overrides

@@ -75,7 +75,7 @@ A secure, high-performance, self-contained file and snippet manager web applicat
     - Unauthenticated `/healthz` endpoint returning JSON health status, version, and server timestamp.
     - Zero external runtime dependencies (HTML, CSS, JS embedded via `embed.FS`; pure Go SQLite).
 17. **Footer Versioning**:
-    - Displays version and update timestamp (`v1.0.17 (updated 2026-10-14 11:53)`).
+    - Displays version and update timestamp (`v1.0.18 (updated 2026-10-14 13:12)`).
 
 ---
 
@@ -195,6 +195,7 @@ A zero-npm-dependency Node.js installer and management suite is included at the 
 sudo node install.js
 
 # 2. Or run directly with flags:
+sudo node install.js --update       # Update/rebuild binary with zero data loss & restart service
 sudo node install.js --wizard       # Step-by-step guided questionnaire
 sudo node install.js --express      # 1-Click install with standard production defaults
 sudo node install.js --plesk        # 1-Click install configured for Plesk (127.0.0.1:8080 HTTPS)

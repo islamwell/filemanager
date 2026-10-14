@@ -20,7 +20,7 @@ const crypto = require('crypto');
 // Default Configuration & Application Metadata
 // ------------------------------------------------------------------------------
 const APP_NAME = 'filemanager';
-const APP_VERSION = 'v1.0.17';
+const APP_VERSION = 'v1.0.18';
 const DEFAULT_PORT = 8080;
 const DEFAULT_HOST = '0.0.0.0';
 const DEFAULT_DATA_DIR = '/var/lib/filemanager';
@@ -1223,6 +1223,11 @@ async function parseCliArgs() {
         await runDiagnostics();
         closeReadline();
         return;
+      case '--update':
+      case '--rebuild':
+        await rebuildBinary();
+        closeReadline();
+        return;
       case '--uninstall':
         await performUninstall();
         closeReadline();
@@ -1273,6 +1278,7 @@ async function parseCliArgs() {
         console.log(`  Interactive Menu : sudo node install.js`);
         console.log(`  Step Wizard      : sudo node install.js --wizard`);
         console.log(`  Express Setup    : sudo node install.js --express`);
+        console.log(`  Update / Rebuild : sudo node install.js --update`);
         console.log(`  Plesk Preset     : sudo node install.js --plesk`);
         console.log(`  Diagnostics      : node install.js --diagnostics`);
         console.log(`  Backup Archive   : sudo node install.js --backup`);

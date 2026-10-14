@@ -1,5 +1,5 @@
 // NRQ Progressive Web App (PWA) Service Worker
-const CACHE_NAME = 'nrq-cache-v1.0.17';
+const CACHE_NAME = 'nrq-cache-v1.0.18';
 
 const STATIC_ASSETS = [
   '/',
