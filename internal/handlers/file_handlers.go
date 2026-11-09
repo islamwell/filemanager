@@ -4,11 +4,13 @@ import (
 	"archive/zip"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -27,6 +29,35 @@ func NewFileHandler(base *BaseHandler) *FileHandler {
 	return &FileHandler{BaseHandler: base}
 }
 
+func (h *FileHandler) sendUploadResponse(w http.ResponseWriter, r *http.Request, errMsg string, fileItem *models.FileItem) {
+	isXHR := r.Header.Get("X-Requested-With") == "XMLHttpRequest" || strings.Contains(r.Header.Get("Accept"), "application/json")
+	if isXHR {
+		w.Header().Set("Content-Type", "application/json")
+		if errMsg != "" {
+			w.WriteHeader(http.StatusBadRequest)
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"success": false,
+				"error":   errMsg,
+			})
+		} else {
+			w.WriteHeader(http.StatusOK)
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"success":  true,
+				"message":  "File uploaded successfully",
+				"file_id":  fileItem.ID,
+				"filename": fileItem.OriginalFilename,
+			})
+		}
+		return
+	}
+
+	if errMsg != "" {
+		http.Redirect(w, r, "/?err="+url.QueryEscape(errMsg), http.StatusSeeOther)
+	} else {
+		http.Redirect(w, r, "/?msg=File+uploaded+successfully", http.StatusSeeOther)
+	}
+}
+
 // UploadFile handles streaming multipart file uploads directly to disk.
 func (h *FileHandler) UploadFile(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r.Context())
@@ -39,19 +70,19 @@ func (h *FileHandler) UploadFile(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, h.Config.MaxFileSize+1024*1024)
 	if err := r.ParseMultipartForm(32 << 20); err != nil { // 32MB max in-memory parse buffer
 		log.Printf("[UPLOAD ERROR] ParseMultipartForm: %v", err)
-		http.Redirect(w, r, "/?err="+err.Error(), http.StatusSeeOther)
+		h.sendUploadResponse(w, r, err.Error(), nil)
 		return
 	}
 
 	file, header, err := r.FormFile("file")
 	if err != nil {
-		http.Redirect(w, r, "/?err=No+file+selected", http.StatusSeeOther)
+		h.sendUploadResponse(w, r, "No file selected", nil)
 		return
 	}
 	defer file.Close()
 
 	if header.Size > h.Config.MaxFileSize {
-		http.Redirect(w, r, "/?err=File+exceeds+maximum+allowed+size", http.StatusSeeOther)
+		h.sendUploadResponse(w, r, "File exceeds maximum allowed size", nil)
 		return
 	}
 
@@ -81,7 +112,7 @@ func (h *FileHandler) UploadFile(w http.ResponseWriter, r *http.Request) {
 	subDir := filepath.Join(h.Config.StorageDir, fileUUID[:2])
 	if err := os.MkdirAll(subDir, 0750); err != nil {
 		log.Printf("[UPLOAD ERROR] Failed to create storage dir: %v", err)
-		http.Redirect(w, r, "/?err=Internal+storage+error", http.StatusSeeOther)
+		h.sendUploadResponse(w, r, "Internal storage error", nil)
 		return
 	}
 
@@ -89,7 +120,7 @@ func (h *FileHandler) UploadFile(w http.ResponseWriter, r *http.Request) {
 	out, err := os.OpenFile(diskPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0640)
 	if err != nil {
 		log.Printf("[UPLOAD ERROR] Failed to create file on disk: %v", err)
-		http.Redirect(w, r, "/?err=Failed+to+save+file+on+disk", http.StatusSeeOther)
+		h.sendUploadResponse(w, r, "Failed to save file on disk", nil)
 		return
 	}
 	defer out.Close()
@@ -110,7 +141,7 @@ func (h *FileHandler) UploadFile(w http.ResponseWriter, r *http.Request) {
 	if n > 0 {
 		if _, err := out.Write(buffer[:n]); err != nil {
 			_ = os.Remove(diskPath)
-			http.Redirect(w, r, "/?err=Write+error", http.StatusSeeOther)
+			h.sendUploadResponse(w, r, "Write error", nil)
 			return
 		}
 		hasher.Write(buffer[:n])
@@ -122,7 +153,7 @@ func (h *FileHandler) UploadFile(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		_ = os.Remove(diskPath)
 		log.Printf("[UPLOAD ERROR] Streaming copy failed: %v", err)
-		http.Redirect(w, r, "/?err=Failed+during+file+transfer", http.StatusSeeOther)
+		h.sendUploadResponse(w, r, "Failed during file transfer", nil)
 		return
 	}
 
@@ -144,11 +175,11 @@ func (h *FileHandler) UploadFile(w http.ResponseWriter, r *http.Request) {
 	if err := h.Store.CreateFile(fileItem); err != nil {
 		_ = os.Remove(diskPath)
 		log.Printf("[UPLOAD ERROR] Store.CreateFile: %v", err)
-		http.Redirect(w, r, "/?err="+err.Error(), http.StatusSeeOther)
+		h.sendUploadResponse(w, r, err.Error(), nil)
 		return
 	}
 
-	http.Redirect(w, r, "/?msg=File+uploaded+successfully", http.StatusSeeOther)
+	h.sendUploadResponse(w, r, "", fileItem)
 }
 
 // DownloadFile serves the file with proper Content-Disposition attachment headers.

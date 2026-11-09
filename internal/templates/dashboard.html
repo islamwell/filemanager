@@ -1,7 +1,7 @@
 {{template "base" .}}
 
 {{define "content"}}
-<div class="dashboard-grid">
+<div class="dashboard-grid" id="dashboardGrid">
   <!-- Left Sidebar -->
   <aside class="sidebar-panel">
     <!-- Categories / Sub-collections Section (up to 4 levels) -->
@@ -130,29 +130,29 @@
             <td>
               <div class="item-name-cell">
                 {{if or .IsMP3 .IsAudio}}
-                <button type="button" class="play-btn" onclick="playAudio('/files/{{.ID}}/audio', '{{.OriginalFilename}}')" title="Play Audio">
-                  ▶ Play
+                <button type="button" class="play-btn" onclick="playAudio('/files/{{.ID}}/audio', '{{.OriginalFilename}}')" title="Play Audio" aria-label="Play Audio">
+                  ▶
                 </button>
                 <svg class="item-icon mp3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"></path>
                 </svg>
                 {{else if .IsImage}}
-                <button type="button" class="play-btn" style="background:#e0e7ff; color:#4338ca; border-color:#c7d2fe;" onclick="openMediaPreview('/files/{{.ID}}/view', '{{.OriginalFilename}}', '{{.MimeType}}')" title="Preview Image">
-                  👁 View
+                <button type="button" class="play-btn" style="background:#e0e7ff; color:#4338ca; border-color:#c7d2fe;" onclick="openMediaPreview('/files/{{.ID}}/view', '{{.OriginalFilename}}', '{{.MimeType}}')" title="Preview Image" aria-label="Preview Image">
+                  👁
                 </button>
                 <svg class="item-icon" fill="none" stroke="#4338ca" stroke-width="2" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                 </svg>
                 {{else if .IsVideo}}
-                <button type="button" class="play-btn" style="background:#fef3c7; color:#b45309; border-color:#fde68a;" onclick="openMediaPreview('/files/{{.ID}}/view', '{{.OriginalFilename}}', '{{.MimeType}}')" title="Play Video">
-                  ▶ Play
+                <button type="button" class="play-btn" style="background:#fef3c7; color:#b45309; border-color:#fde68a;" onclick="openMediaPreview('/files/{{.ID}}/view', '{{.OriginalFilename}}', '{{.MimeType}}')" title="Play Video" aria-label="Play Video">
+                  ▶
                 </button>
                 <svg class="item-icon" fill="none" stroke="#b45309" stroke-width="2" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
                 </svg>
                 {{else if .IsPDF}}
-                <button type="button" class="play-btn" style="background:#fee2e2; color:#b91c1c; border-color:#fecaca;" onclick="openMediaPreview('/files/{{.ID}}/view', '{{.OriginalFilename}}', '{{.MimeType}}')" title="View PDF">
-                  📄 View
+                <button type="button" class="play-btn" style="background:#fee2e2; color:#b91c1c; border-color:#fecaca;" onclick="openMediaPreview('/files/{{.ID}}/view', '{{.OriginalFilename}}', '{{.MimeType}}')" title="View PDF" aria-label="View PDF">
+                  📄
                 </button>
                 <svg class="item-icon" fill="none" stroke="#b91c1c" stroke-width="2" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
@@ -184,8 +184,8 @@
             <td>
               <div class="actions-cell">
                 {{if or .IsImage .IsVideo .IsPDF}}
-                <button type="button" class="btn btn-secondary btn-sm" onclick="openMediaPreview('/files/{{.ID}}/view', '{{.OriginalFilename}}', '{{.MimeType}}')" title="Preview">
-                  👁 View
+                <button type="button" class="btn btn-secondary btn-sm" onclick="openMediaPreview('/files/{{.ID}}/view', '{{.OriginalFilename}}', '{{.MimeType}}')" title="Preview" aria-label="Preview">
+                  👁
                 </button>
                 {{end}}
                 <button type="button" class="btn btn-secondary btn-sm" onclick="openRenameModal('{{.ID}}', 'file', '{{.OriginalFilename}}')" title="Rename File">
@@ -287,8 +287,8 @@
                 <button type="button" class="btn btn-secondary btn-sm" onclick="openShareModal('{{.ID}}', 'snippet', '{{if .ShareToken}}{{.ShareToken}}{{end}}')" title="Share">
                   🔗 Share
                 </button>
-                <a href="/snippets/{{.ID}}" class="btn btn-secondary btn-sm" title="View">
-                  👁 View
+                <a href="/snippets/{{.ID}}" class="btn btn-secondary btn-sm" title="View" aria-label="View">
+                  👁
                 </a>
                 <form action="/snippets/{{.ID}}/delete" method="POST" onsubmit="return confirm('Delete snippet {{.Title}}?');" style="display:inline;">
                   <input type="hidden" name="_csrf" value="{{$.CSRFToken}}">
@@ -315,7 +315,7 @@
     <h3 class="dialog-title">Upload File</h3>
     <button onclick="closeDialog('uploadModal')" class="dialog-close">&times;</button>
   </div>
-  <form action="/files/upload" method="POST" enctype="multipart/form-data">
+  <form id="uploadFileForm" action="/files/upload" method="POST" enctype="multipart/form-data">
     <input type="hidden" name="_csrf" value="{{.CSRFToken}}">
 
     <div class="form-group">
@@ -339,6 +339,15 @@
     <div class="form-group">
       <label class="form-label" for="uploadTags">Tags (comma-separated)</label>
       <input type="text" id="uploadTags" name="tags" class="form-control" placeholder="e.g. music, project, report">
+    </div>
+
+    <div id="uploadProgressSection" class="upload-progress-container" style="display: none;">
+      <div class="upload-progress-header">
+        <span id="uploadProgressTitle" class="upload-progress-title">Uploading file...</span>
+        <span id="uploadProgressPercent" class="upload-progress-percent">0%</span>
+      </div>
+      <progress id="uploadProgressBar" class="upload-progress-bar" value="0" max="100" aria-label="Upload progress"></progress>
+      <div id="uploadProgressDetail" class="upload-progress-detail" role="status" aria-live="polite">0 KB / 0 KB</div>
     </div>
 
     <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1.5rem;">
@@ -381,6 +390,15 @@
     <div class="form-group">
       <label class="form-label" for="pasteTags">Tags (comma-separated)</label>
       <input type="text" id="pasteTags" name="tags" class="form-control" placeholder="e.g. screenshot, design, bug">
+    </div>
+
+    <div id="pasteProgressSection" class="upload-progress-container" style="display: none;">
+      <div class="upload-progress-header">
+        <span id="pasteProgressTitle" class="upload-progress-title">Uploading image...</span>
+        <span id="pasteProgressPercent" class="upload-progress-percent">0%</span>
+      </div>
+      <progress id="pasteProgressBar" class="upload-progress-bar" value="0" max="100" aria-label="Upload progress"></progress>
+      <div id="pasteProgressDetail" class="upload-progress-detail" role="status" aria-live="polite">0 KB / 0 KB</div>
     </div>
 
     <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1.5rem;">

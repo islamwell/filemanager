@@ -33,8 +33,8 @@
           <td>
             <div class="item-name-cell">
               {{if .IsMP3}}
-              <button type="button" class="play-btn" onclick="playAudio('/files/{{.ID}}/audio', '{{.Title}}')" title="Play MP3">
-                ▶ Play
+              <button type="button" class="play-btn" onclick="playAudio('/files/{{.ID}}/audio', '{{.Title}}')" title="Play MP3" aria-label="Play MP3">
+                ▶
               </button>
               <svg class="item-icon mp3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"></path>
@@ -81,9 +81,9 @@
           </td>
           <td style="text-align: right;">
             {{if eq .Type "file"}}
-            <a href="/files/{{.ID}}/download" class="btn btn-secondary btn-sm">⬇ Download</a>
+            <a href="/files/{{.ID}}/download" class="btn btn-secondary btn-sm" title="Download" aria-label="Download">⬇ Download</a>
             {{else}}
-            <a href="/snippets/{{.ID}}" class="btn btn-secondary btn-sm">👁 View</a>
+            <a href="/snippets/{{.ID}}" class="btn btn-secondary btn-sm" title="View" aria-label="View">👁</a>
             {{end}}
           </td>
         </tr>

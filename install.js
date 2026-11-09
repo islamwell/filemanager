@@ -20,7 +20,7 @@ const crypto = require('crypto');
 // Default Configuration & Application Metadata
 // ------------------------------------------------------------------------------
 const APP_NAME = 'filemanager';
-const APP_VERSION = 'v1.0.18';
+const APP_VERSION = 'v1.0.19';
 const DEFAULT_PORT = 8080;
 const DEFAULT_HOST = '0.0.0.0';
 const DEFAULT_DATA_DIR = '/var/lib/filemanager';

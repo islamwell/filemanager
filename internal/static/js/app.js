@@ -1,5 +1,73 @@
 // Client-side interaction helpers (Vanilla JS, Zero Dependencies)
 
+// Audio state persistence across navigations and page reloads
+function saveAudioState() {
+  const bar = document.getElementById('globalAudioBar');
+  const player = document.getElementById('globalAudioPlayer');
+  const trackName = document.getElementById('audioTrackName');
+  if (!bar || !player) return;
+
+  try {
+    if (bar.classList.contains('active') && player.src) {
+      const state = {
+        src: player.src,
+        filename: trackName ? trackName.textContent : 'Audio Track',
+        currentTime: player.currentTime,
+        paused: player.paused,
+        active: true
+      };
+      sessionStorage.setItem('nrq_audio_player_state', JSON.stringify(state));
+    }
+  } catch (e) {
+    console.warn('Unable to save audio state:', e);
+  }
+}
+
+function initAudioPlayer() {
+  const bar = document.getElementById('globalAudioBar');
+  const player = document.getElementById('globalAudioPlayer');
+  const trackName = document.getElementById('audioTrackName');
+  if (!bar || !player) return;
+
+  if (!player.hasAttribute('data-persisted')) {
+    player.setAttribute('data-persisted', 'true');
+    player.addEventListener('timeupdate', () => {
+      if (!window._audioSaveTimeout) {
+        window._audioSaveTimeout = setTimeout(() => {
+          saveAudioState();
+          window._audioSaveTimeout = null;
+        }, 1000);
+      }
+    });
+    player.addEventListener('play', saveAudioState);
+    player.addEventListener('pause', saveAudioState);
+    player.addEventListener('ended', saveAudioState);
+  }
+
+  try {
+    const raw = sessionStorage.getItem('nrq_audio_player_state');
+    if (!raw) return;
+    const state = JSON.parse(raw);
+    if (state && state.active && state.src) {
+      if (trackName) trackName.textContent = state.filename || 'Audio Track';
+      if (player.src !== state.src) {
+        player.src = state.src;
+        if (state.currentTime) {
+          player.currentTime = state.currentTime;
+        }
+      }
+      bar.classList.add('active');
+      if (!state.paused) {
+        player.play().catch(err => {
+          console.log('Autoplay restriction caught, bottom player kept open ready to play:', err);
+        });
+      }
+    }
+  } catch (e) {
+    console.warn('Unable to restore audio state:', e);
+  }
+}
+
 // Single-Click MP3 Playback Controller
 function playAudio(streamUrl, filename) {
   const bar = document.getElementById('globalAudioBar');
@@ -14,6 +82,7 @@ function playAudio(streamUrl, filename) {
   player.play().catch(err => {
     console.warn('Autoplay prevented by browser:', err);
   });
+  saveAudioState();
 }
 
 function closeAudioPlayer() {
@@ -26,6 +95,9 @@ function closeAudioPlayer() {
   if (bar) {
     bar.classList.remove('active');
   }
+  try {
+    sessionStorage.removeItem('nrq_audio_player_state');
+  } catch (e) {}
 }
 
 // Modal Dialog Helpers
@@ -599,5 +671,278 @@ function cacheCurrentSnippetIfPresent() {
 }
 
 document.addEventListener('DOMContentLoaded', cacheCurrentSnippetIfPresent);
+
+// -------------------------------------------------------------
+// Seamless Folder Navigation & Upload Progress Handlers
+// -------------------------------------------------------------
+function formatBytes(bytes, decimals = 1) {
+  if (!bytes || bytes === 0) return '0 B';
+  const k = 1024;
+  const dm = decimals < 0 ? 0 : decimals;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+}
+
+// Seamless Folder Navigation (Keeps audio player playing continuously across folders)
+function seamlessNavigate(url, push = true) {
+  const dashboardGrid = document.getElementById('dashboardGrid');
+  if (!dashboardGrid) {
+    window.location.href = url;
+    return;
+  }
+
+  dashboardGrid.style.transition = 'opacity 0.15s ease';
+  dashboardGrid.style.opacity = '0.5';
+
+  fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+    .then(res => {
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res.text();
+    })
+    .then(html => {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+      const newGrid = doc.getElementById('dashboardGrid');
+
+      if (newGrid) {
+        dashboardGrid.innerHTML = newGrid.innerHTML;
+        dashboardGrid.className = newGrid.className;
+        document.title = doc.title;
+        if (push) {
+          history.pushState(null, '', url);
+        }
+        initUploadForms();
+        if (typeof onFileSelectionChange === 'function') {
+          onFileSelectionChange();
+        }
+      } else {
+        window.location.href = url;
+      }
+    })
+    .catch(err => {
+      console.warn('Seamless navigation failed, falling back:', err);
+      window.location.href = url;
+    })
+    .finally(() => {
+      if (dashboardGrid) {
+        dashboardGrid.style.opacity = '1';
+      }
+    });
+}
+
+function setupSeamlessFolderNavigation() {
+  document.addEventListener('click', function(e) {
+    const link = e.target.closest('a');
+    if (!link || !link.href) return;
+
+    // Ignore middle-click, modifier keys, target="_blank", or download links
+    if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+    if (link.target === '_blank' || link.hasAttribute('download')) return;
+
+    try {
+      const url = new URL(link.href, window.location.origin);
+      // Intercept navigation to root dashboard or folder/tag queries
+      if (url.origin === window.location.origin && url.pathname === '/') {
+        if (document.getElementById('dashboardGrid')) {
+          e.preventDefault();
+          seamlessNavigate(url.href, true);
+        }
+      }
+    } catch (err) {}
+  });
+
+  window.addEventListener('popstate', function() {
+    if (document.getElementById('dashboardGrid')) {
+      seamlessNavigate(window.location.href, false);
+    }
+  });
+}
+
+// Upload with Live Progress Bar (MWG-compliant)
+function uploadFormWithProgress(form, options) {
+  const fileInput = form.querySelector('input[type="file"]');
+  if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+    alert('Please select a file to upload.');
+    return;
+  }
+
+  const file = fileInput.files[0];
+  const progressSection = options.progressSection;
+  const progressBar = options.progressBar;
+  const percentEl = options.percentEl;
+  const detailEl = options.detailEl;
+  const submitBtn = form.querySelector('button[type="submit"]');
+  const cancelBtn = form.querySelector('button[type="button"]');
+
+  const globalToast = document.getElementById('globalUploadToast');
+  const globalBar = document.getElementById('globalUploadProgressBar');
+  const globalFilename = document.getElementById('globalUploadFilename');
+  const globalPercent = document.getElementById('globalUploadPercent');
+  const globalDetail = document.getElementById('globalUploadDetail');
+
+  if (globalToast) {
+    if (globalFilename) globalFilename.textContent = file.name;
+    if (globalBar) globalBar.value = 0;
+    if (globalPercent) globalPercent.textContent = '0%';
+    if (globalDetail) globalDetail.textContent = '0 B / ' + formatBytes(file.size);
+    globalToast.style.display = 'flex';
+  }
+
+  if (progressSection) progressSection.style.display = 'flex';
+  if (progressBar) progressBar.value = 0;
+  if (percentEl) percentEl.textContent = '0%';
+  if (detailEl) detailEl.textContent = '0 B / ' + formatBytes(file.size);
+
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.dataset.originalText = submitBtn.textContent;
+    submitBtn.textContent = 'Uploading...';
+  }
+  if (cancelBtn) cancelBtn.disabled = true;
+
+  const xhr = new XMLHttpRequest();
+  xhr.open('POST', form.action, true);
+  xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+
+  xhr.upload.onprogress = function(e) {
+    if (e.lengthComputable) {
+      const percent = Math.min(99, Math.round((e.loaded / e.total) * 100));
+      if (progressBar) progressBar.value = percent;
+      if (percentEl) percentEl.textContent = percent + '%';
+      if (detailEl) {
+        detailEl.textContent = formatBytes(e.loaded) + ' of ' + formatBytes(e.total) + ' (' + percent + '%)';
+      }
+
+      if (globalBar) globalBar.value = percent;
+      if (globalPercent) globalPercent.textContent = percent + '%';
+      if (globalDetail) {
+        globalDetail.textContent = formatBytes(e.loaded) + ' of ' + formatBytes(e.total);
+      }
+    }
+  };
+
+  xhr.onload = function() {
+    if (progressBar) progressBar.value = 100;
+    if (globalBar) globalBar.value = 100;
+    if (percentEl) percentEl.textContent = '100%';
+    if (globalPercent) globalPercent.textContent = '100%';
+
+    let isSuccess = xhr.status >= 200 && xhr.status < 400;
+    let msg = 'File uploaded successfully!';
+
+    try {
+      const data = JSON.parse(xhr.responseText);
+      if (data && data.success === false) {
+        isSuccess = false;
+        msg = data.error || 'Upload failed.';
+      } else if (data && data.message) {
+        msg = data.message;
+      }
+    } catch (e) {
+      if (!isSuccess) {
+        msg = 'Upload failed with status ' + xhr.status;
+      }
+    }
+
+    if (isSuccess) {
+      if (detailEl) detailEl.textContent = '✓ Upload complete!';
+      if (globalDetail) globalDetail.textContent = '✓ Complete!';
+      if (submitBtn) submitBtn.textContent = 'Uploaded!';
+
+      setTimeout(() => {
+        if (options.modalId) {
+          closeDialog(options.modalId);
+        }
+        if (progressSection) progressSection.style.display = 'none';
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = submitBtn.dataset.originalText || 'Upload File';
+        }
+        if (cancelBtn) cancelBtn.disabled = false;
+        form.reset();
+
+        // Refresh dashboard content without interrupting audio playback
+        if (document.getElementById('dashboardGrid')) {
+          seamlessNavigate(window.location.href, false);
+        } else {
+          window.location.reload();
+        }
+
+        setTimeout(() => {
+          if (globalToast) globalToast.style.display = 'none';
+        }, 3000);
+      }, 600);
+    } else {
+      alert('Upload failed: ' + msg);
+      if (detailEl) detailEl.textContent = 'Error: ' + msg;
+      if (globalToast) globalToast.style.display = 'none';
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = submitBtn.dataset.originalText || 'Upload File';
+      }
+      if (cancelBtn) cancelBtn.disabled = false;
+    }
+  };
+
+  xhr.onerror = function() {
+    alert('Network error occurred during upload. Please check your connection.');
+    if (globalToast) globalToast.style.display = 'none';
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = submitBtn.dataset.originalText || 'Upload File';
+    }
+    if (cancelBtn) cancelBtn.disabled = false;
+  };
+
+  const formData = new FormData(form);
+  xhr.send(formData);
+}
+
+function initUploadForms() {
+  const uploadForm = document.getElementById('uploadFileForm');
+  if (uploadForm && !uploadForm.hasAttribute('data-ajax-init')) {
+    uploadForm.setAttribute('data-ajax-init', 'true');
+    uploadForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      uploadFormWithProgress(uploadForm, {
+        modalId: 'uploadModal',
+        progressSection: document.getElementById('uploadProgressSection'),
+        progressBar: document.getElementById('uploadProgressBar'),
+        percentEl: document.getElementById('uploadProgressPercent'),
+        detailEl: document.getElementById('uploadProgressDetail')
+      });
+    });
+  }
+
+  const pasteForm = document.getElementById('pasteUploadForm');
+  if (pasteForm && !pasteForm.hasAttribute('data-ajax-init')) {
+    pasteForm.setAttribute('data-ajax-init', 'true');
+    pasteForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      uploadFormWithProgress(pasteForm, {
+        modalId: 'pasteImageModal',
+        progressSection: document.getElementById('pasteProgressSection'),
+        progressBar: document.getElementById('pasteProgressBar'),
+        percentEl: document.getElementById('pasteProgressPercent'),
+        detailEl: document.getElementById('pasteProgressDetail')
+      });
+    });
+  }
+}
+
+// Lifecycle boot
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    initAudioPlayer();
+    setupSeamlessFolderNavigation();
+    initUploadForms();
+  });
+} else {
+  initAudioPlayer();
+  setupSeamlessFolderNavigation();
+  initUploadForms();
+}
+
 
 
